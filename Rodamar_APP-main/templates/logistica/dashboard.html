@@ -151,6 +151,7 @@
                         <td>
                             <div class="fw-semibold text-dark">{{ v.marca }} {{ v.modelo }}</div>
                             <small class="text-muted">{{ v.color|default:"Sin color reg." }}</small>
+                            {% if v.contenedor %}<div><span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-box-seam me-1"></i>{{ v.contenedor.numero }}</span></div>{% endif %}
                         </td>
                         <td>
                             <div class="d-flex align-items-center gap-1">
@@ -194,6 +195,9 @@
                         {% endif %}
                         <td class="text-end pe-4">
                             <div class="btn-group">
+                                {% if es_operador %}
+                                <a href="{% url 'detalle_vehiculo' v.pk %}" class="btn btn-sm btn-light border" title="Fotos y chequeo"><i class="bi bi-camera"></i></a>
+                                {% endif %}
                                 <a href="{% url 'rastreo' %}?codigo={{ v.chasis }}" class="btn btn-sm btn-light border" title="Ver Hoja de Ruta">
                                     <i class="bi bi-clock-history"></i>
                                 </a>

@@ -16,6 +16,7 @@
         <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-buques"><i class="bi bi-water me-1"></i> Buques ({{ buques|length }})</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-clientes"><i class="bi bi-building me-1"></i> Clientes ({{ clientes|length }})</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-camiones"><i class="bi bi-truck me-1"></i> Camiones ({{ camiones|length }})</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-contenedores"><i class="bi bi-box-seam me-1"></i> Contenedores ({{ contenedores|length }})</button></li>
     </ul>
 
     <div class="tab-content">
@@ -89,7 +90,7 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light small text-uppercase text-muted"><tr><th class="ps-4">Patente</th><th>Empresa</th><th>Chofer</th><th>RUT chofer</th><th class="text-end pe-4">Acciones</th></tr></thead>
+                        <thead class="table-light small text-uppercase text-muted"><tr><th class="ps-4">Patente</th><th>Empresa</th><th>Chofer</th><th>RUT chofer</th><th>Carga</th><th class="text-end pe-4">Acciones</th></tr></thead>
                         <tbody>
                         {% for t in camiones %}
                         <tr>
@@ -97,14 +98,48 @@
                             <td>{{ t.empresa_transporte }}</td>
                             <td>{{ t.nombre_chofer|default:"—" }}</td>
                             <td>{{ t.rut_chofer|default:"—" }}</td>
+                            <td>{{ t.vehiculos_cargados.count }} / {{ t.capacidad }}</td>
                             <td class="text-end pe-4">
+                                <a href="{% url 'detalle_camion' t.pk %}" class="btn btn-sm btn-rodamar" title="Ver carga y asignar vehículos"><i class="bi bi-truck"></i> Carga</a>
                                 <a href="{% url 'editar_camion' t.pk %}" class="btn btn-sm btn-light border" title="Editar"><i class="bi bi-pencil"></i></a>
                                 <form method="post" action="{% url 'eliminar_camion' t.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este camión?');">
                                     {% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
                                 </form>
                             </td>
                         </tr>
-                        {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Sin camiones registrados.</td></tr>{% endfor %}
+                        {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Sin camiones registrados.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenedores -->
+        <div class="tab-pane fade" id="tab-contenedores">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Contenedores</h5>
+                    <button class="btn btn-rodamar" data-bs-toggle="modal" data-bs-target="#modalContenedor"><i class="bi bi-plus-lg me-1"></i> Nuevo contenedor</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted"><tr><th class="ps-4">N° contenedor</th><th>Sello</th><th>Apertura</th><th>Vehículos</th><th class="text-end pe-4">Acciones</th></tr></thead>
+                        <tbody>
+                        {% for c in contenedores %}
+                        <tr>
+                            <td class="ps-4 fw-semibold font-monospace"><a href="{% url 'detalle_contenedor' c.pk %}">{{ c.numero }}</a></td>
+                            <td>{{ c.sello|default:"—" }}</td>
+                            <td>{{ c.fecha_apertura|date:"d/m/Y"|default:"—" }}</td>
+                            <td>{{ c.total }}</td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'detalle_contenedor' c.pk %}" class="btn btn-sm btn-rodamar" title="Ver vehículos"><i class="bi bi-box-seam"></i> Ver</a>
+                                <a href="{% url 'editar_contenedor' c.pk %}" class="btn btn-sm btn-light border" title="Editar"><i class="bi bi-pencil"></i></a>
+                                <form method="post" action="{% url 'eliminar_contenedor' c.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este contenedor? Los vehículos NO se borran, solo quedan sin contenedor.');">
+                                    {% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Sin contenedores registrados.</td></tr>{% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -132,6 +167,13 @@
     <div class="modal-header p-4"><h5 class="modal-title fw-bold">Nuevo camión cigüeña</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <form method="post" action="{% url 'registrar_camion' %}">{% csrf_token %}<input type="hidden" name="volver" value="gestion">
         <div class="modal-body p-4 row g-3">{% for field in form_camion %}<div class="col-12"><label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>{{ field }}</div>{% endfor %}</div>
+        <div class="modal-footer p-3"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-rodamar">Guardar</button></div>
+    </form></div></div></div>
+
+<div class="modal fade" id="modalContenedor" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
+    <div class="modal-header p-4"><h5 class="modal-title fw-bold">Nuevo contenedor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="post" action="{% url 'registrar_contenedor' %}">{% csrf_token %}<input type="hidden" name="volver" value="gestion">
+        <div class="modal-body p-4 row g-3">{% for field in form_contenedor %}<div class="col-12"><label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>{{ field }}</div>{% endfor %}</div>
         <div class="modal-footer p-3"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-rodamar">Guardar</button></div>
     </form></div></div></div>
 

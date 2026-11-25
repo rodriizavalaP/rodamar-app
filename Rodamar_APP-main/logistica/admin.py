@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Buque, Cliente, CamionCiguena, Vehiculo, HistorialEstado
+from .models import Buque, Cliente, CamionCiguena, Vehiculo, HistorialEstado, FotoVehiculo, Contenedor
 
 
 @admin.register(Buque)
@@ -18,14 +18,14 @@ class ClienteAdmin(admin.ModelAdmin):
 
 @admin.register(CamionCiguena)
 class CamionCiguenaAdmin(admin.ModelAdmin):
-    list_display = ('patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer')
+    list_display = ('patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer', 'capacidad')
     search_fields = ('patente', 'empresa_transporte', 'nombre_chofer')
     list_filter = ('empresa_transporte',)
 
 
 @admin.register(Vehiculo)
 class VehiculoAdmin(admin.ModelAdmin):
-    list_display = ('chasis', 'marca', 'modelo', 'estado', 'ubicacion_patio', 'buque', 'cliente', 'fecha_registro')
+    list_display = ('chasis', 'marca', 'modelo', 'estado', 'ubicacion_patio', 'buque', 'cliente', 'contenedor', 'fecha_registro')
     search_fields = ('chasis', 'marca', 'modelo')
     list_filter = ('estado', 'buque', 'marca')
     date_hierarchy = 'fecha_registro'
@@ -42,3 +42,18 @@ class HistorialEstadoAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(FotoVehiculo)
+class FotoVehiculoAdmin(admin.ModelAdmin):
+    list_display = ('vehiculo', 'tipo', 'descripcion', 'usuario', 'fecha')
+    list_filter = ('tipo', 'fecha')
+    search_fields = ('vehiculo__chasis', 'descripcion')
+    # La imagen se sube desde el panel web; aquí solo se administran los datos.
+    exclude = ('imagen',)
+
+
+@admin.register(Contenedor)
+class ContenedorAdmin(admin.ModelAdmin):
+    list_display = ('numero', 'sello', 'fecha_apertura')
+    search_fields = ('numero', 'sello')

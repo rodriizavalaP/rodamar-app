@@ -1,9 +1,10 @@
+from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q
-from .models import Vehiculo, Buque, Cliente, CamionCiguena, HistorialEstado
-from .forms import VehiculoForm, BuqueForm, ClienteForm, CamionCiguenaForm
+from django.db.models import Count, Q
+from .models import Vehiculo, Buque, Cliente, CamionCiguena, HistorialEstado, FotoVehiculo, Contenedor
+from .forms import VehiculoForm, BuqueForm, ClienteForm, CamionCiguenaForm, ContenedorForm
 
 
 def es_operador(user):
@@ -296,6 +297,8 @@ def gestion_catalogos(request):
         'form_buque': BuqueForm(),
         'form_cliente': ClienteForm(),
         'form_camion': CamionCiguenaForm(),
+        'contenedores': Contenedor.objects.all().annotate(total=Count('vehiculos')),
+        'form_contenedor': ContenedorForm(),
     })
 
 
@@ -358,3 +361,253 @@ def editar_vehiculo(request, pk):
     return render(request, 'logistica/editar.html', {
         'form': form, 'titulo': 'Vehículo', 'objeto': vehiculo, 'destino': 'dashboard',
     })
+
+
+# --------------------------------------------------------------------------
+# Cigüeña: varios vehículos en un mismo viaje y su seguimiento
+# --------------------------------------------------------------------------
+
+@solo_operadores
+def detalle_camion(request, pk):
+    camion = get_object_or_404(CamionCiguena, pk=pk)
+    cargados = camion.vehiculos_cargados.select_related('buque', 'cliente').order_by('chasis')
+    disponibles = Vehiculo.objects.filter(camion_ciguena__isnull=True).exclude(
+        estado='ENTREGADO').select_related('buque', 'cliente').order_by('chasis')
+    movimientos = camion.movimientos.select_related('vehiculo', 'usuario')[:30]
+    return render(request, 'logistica/detalle_camion.html', {
+        'camion': camion,
+        'cargados': cargados,
+        'disponibles': disponibles,
+        'movimientos': movimientos,
+    })
+
+
+@solo_operadores
+def asignar_vehiculos(request, pk):
+    """Asigna varios vehículos seleccionados a una cigüeña, respetando su capacidad."""
+    camion = get_object_or_404(CamionCiguena, pk=pk)
+    if request.method == 'POST':
+        ids = request.POST.getlist('vehiculos')
+        vehiculos = list(Vehiculo.objects.filter(pk__in=ids, camion_ciguena__isnull=True))
+
+        if not vehiculos:
+            messages.error(request, "Selecciona al menos un vehículo disponible.")
+        elif len(vehiculos) > camion.cupos_libres:
+            messages.error(
+                request,
+                f"La cigüeña {camion.patente} solo tiene {camion.cupos_libres} cupo(s) libre(s) "
+                f"y seleccionaste {len(vehiculos)}."
+            )
+        else:
+            en_traslado = request.POST.get('marcar_en_camino') == 'on'
+            for v in vehiculos:
+                estado_anterior = v.estado
+                v.camion_ciguena = camion
+                if en_traslado:
+                    v.estado = 'EN_CAMINO'
+                v.save()
+                HistorialEstado.objects.create(
+                    vehiculo=v,
+                    estado_anterior=estado_anterior,
+                    estado_nuevo=v.estado,
+                    ubicacion_patio=v.ubicacion_patio,
+                    usuario=request.user,
+                    camion_ciguena=camion,
+                    nota=f"Asignado a la cigüeña {camion.patente}",
+                )
+            messages.success(
+                request,
+                f"{len(vehiculos)} vehículo(s) asignado(s) a la cigüeña {camion.patente}."
+            )
+    return redirect('detalle_camion', pk=camion.pk)
+
+
+@solo_operadores
+def quitar_vehiculo_de_camion(request, pk, vehiculo_pk):
+    camion = get_object_or_404(CamionCiguena, pk=pk)
+    if request.method == 'POST':
+        vehiculo = get_object_or_404(Vehiculo, pk=vehiculo_pk, camion_ciguena=camion)
+        vehiculo.camion_ciguena = None
+        vehiculo.save()
+        HistorialEstado.objects.create(
+            vehiculo=vehiculo,
+            estado_anterior=vehiculo.estado,
+            estado_nuevo=vehiculo.estado,
+            ubicacion_patio=vehiculo.ubicacion_patio,
+            usuario=request.user,
+            camion_ciguena=camion,
+            nota=f"Retirado de la cigüeña {camion.patente}",
+        )
+        messages.success(request, f"{vehiculo.chasis} fue retirado de la cigüeña {camion.patente}.")
+    return redirect('detalle_camion', pk=camion.pk)
+
+
+# --------------------------------------------------------------------------
+# Detalle del vehículo y fotos del chequeo
+# --------------------------------------------------------------------------
+
+MAX_FOTO_BYTES = 2 * 1024 * 1024  # 2 MB (Vercel limita el tamaño de cada petición)
+
+
+def _tipo_imagen(datos):
+    """Detecta el formato real mirando los primeros bytes (no confía en el nombre)."""
+    if datos[:3] == b'\xff\xd8\xff':
+        return 'image/jpeg'
+    if datos[:8] == b'\x89PNG\r\n\x1a\n':
+        return 'image/png'
+    if datos[:4] == b'RIFF' and datos[8:12] == b'WEBP':
+        return 'image/webp'
+    return None
+
+
+@solo_operadores
+def detalle_vehiculo(request, pk):
+    vehiculo = get_object_or_404(
+        Vehiculo.objects.select_related('buque', 'cliente', 'camion_ciguena'), pk=pk)
+    # defer('imagen') evita traer los bytes de las fotos solo para listarlas
+    fotos = vehiculo.fotos.defer('imagen').select_related('usuario')
+    return render(request, 'logistica/detalle_vehiculo.html', {
+        'vehiculo': vehiculo,
+        'fotos': fotos,
+        'historial': vehiculo.historial.select_related('usuario', 'camion_ciguena'),
+        'tipos_foto': FotoVehiculo.TIPOS,
+    })
+
+
+@solo_operadores
+def subir_foto(request, pk):
+    vehiculo = get_object_or_404(Vehiculo, pk=pk)
+    if request.method == 'POST':
+        archivos = request.FILES.getlist('imagenes')
+        tipo = request.POST.get('tipo', 'LLEGADA')
+        descripcion = request.POST.get('descripcion', '').strip()[:160]
+
+        if tipo not in dict(FotoVehiculo.TIPOS):
+            tipo = 'LLEGADA'
+        if not archivos:
+            messages.error(request, "Elige al menos una foto.")
+            return redirect('detalle_vehiculo', pk=vehiculo.pk)
+
+        guardadas, rechazadas = 0, []
+        for archivo in archivos:
+            if archivo.size > MAX_FOTO_BYTES:
+                rechazadas.append(f"{archivo.name} (supera 2 MB)")
+                continue
+            datos = archivo.read()
+            content_type = _tipo_imagen(datos)
+            if not content_type:
+                rechazadas.append(f"{archivo.name} (no es JPG, PNG ni WEBP)")
+                continue
+            FotoVehiculo.objects.create(
+                vehiculo=vehiculo, tipo=tipo, descripcion=descripcion,
+                imagen=datos, content_type=content_type, usuario=request.user,
+            )
+            guardadas += 1
+
+        if guardadas:
+            messages.success(request, f"{guardadas} foto(s) guardada(s).")
+        if rechazadas:
+            messages.error(request, "No se guardaron: " + ", ".join(rechazadas))
+    return redirect('detalle_vehiculo', pk=vehiculo.pk)
+
+
+@solo_operadores
+def ver_foto(request, pk):
+    """Entrega la imagen guardada en la base de datos (solo para operadores)."""
+    foto = get_object_or_404(FotoVehiculo, pk=pk)
+    respuesta = HttpResponse(bytes(foto.imagen), content_type=foto.content_type)
+    respuesta['Cache-Control'] = 'private, max-age=3600'
+    respuesta['X-Content-Type-Options'] = 'nosniff'
+    return respuesta
+
+
+@solo_operadores
+def eliminar_foto(request, pk):
+    foto = get_object_or_404(FotoVehiculo.objects.defer('imagen'), pk=pk)
+    vehiculo_pk = foto.vehiculo_id
+    if request.method == 'POST':
+        foto.delete()
+        messages.success(request, "Foto eliminada.")
+    return redirect('detalle_vehiculo', pk=vehiculo_pk)
+
+
+# --------------------------------------------------------------------------
+# Contenedores: vehículos que llegan dentro de un contenedor
+# --------------------------------------------------------------------------
+
+@solo_operadores
+def registrar_contenedor(request):
+    if request.method == 'POST':
+        form = ContenedorForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Contenedor registrado exitosamente.")
+        else:
+            messages.error(request, f"No se pudo registrar el contenedor. {_errores_de(form)}")
+    return redirect(_volver(request, 'gestion'))
+
+
+@solo_operadores
+def editar_contenedor(request, pk):
+    return _editar(request, Contenedor, ContenedorForm, pk, 'Contenedor', 'gestion')
+
+
+@solo_operadores
+def eliminar_contenedor(request, pk):
+    if request.method == 'POST':
+        contenedor = get_object_or_404(Contenedor, pk=pk)
+        numero = contenedor.numero
+        cantidad = contenedor.vehiculos.count()
+        contenedor.delete()  # los vehículos NO se borran: solo quedan sin contenedor
+        if cantidad:
+            messages.warning(request, f"Contenedor {numero} eliminado. {cantidad} vehículo(s) quedaron sin contenedor.")
+        else:
+            messages.success(request, f"Contenedor {numero} eliminado.")
+    return redirect('gestion')
+
+
+@solo_operadores
+def detalle_contenedor(request, pk):
+    contenedor = get_object_or_404(Contenedor, pk=pk)
+    return render(request, 'logistica/detalle_contenedor.html', {
+        'contenedor': contenedor,
+        'vehiculos': contenedor.vehiculos.select_related('buque', 'cliente').order_by('chasis'),
+        'disponibles': Vehiculo.objects.filter(contenedor__isnull=True).select_related(
+            'buque', 'cliente').order_by('chasis'),
+    })
+
+
+@solo_operadores
+def agregar_vehiculos_a_contenedor(request, pk):
+    """Anota que los vehículos seleccionados venían dentro de este contenedor."""
+    contenedor = get_object_or_404(Contenedor, pk=pk)
+    if request.method == 'POST':
+        vehiculos = list(Vehiculo.objects.filter(
+            pk__in=request.POST.getlist('vehiculos'), contenedor__isnull=True))
+        if not vehiculos:
+            messages.error(request, "Selecciona al menos un vehículo.")
+        else:
+            for v in vehiculos:
+                v.contenedor = contenedor
+                v.save()
+                HistorialEstado.objects.create(
+                    vehiculo=v,
+                    estado_anterior=v.estado,
+                    estado_nuevo=v.estado,
+                    ubicacion_patio=v.ubicacion_patio,
+                    usuario=request.user,
+                    nota=f"Descargado del contenedor {contenedor.numero}",
+                )
+            messages.success(request, f"{len(vehiculos)} vehículo(s) anotado(s) en el contenedor {contenedor.numero}.")
+    return redirect('detalle_contenedor', pk=contenedor.pk)
+
+
+@solo_operadores
+def quitar_vehiculo_de_contenedor(request, pk, vehiculo_pk):
+    contenedor = get_object_or_404(Contenedor, pk=pk)
+    if request.method == 'POST':
+        vehiculo = get_object_or_404(Vehiculo, pk=vehiculo_pk, contenedor=contenedor)
+        vehiculo.contenedor = None
+        vehiculo.save()
+        messages.success(request, f"{vehiculo.chasis} ya no figura en el contenedor {contenedor.numero}.")
+    return redirect('detalle_contenedor', pk=contenedor.pk)

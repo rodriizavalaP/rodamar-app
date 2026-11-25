@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Contenedor {{ contenedor.numero }} | Rodamar Logística{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <span class="text-muted small text-uppercase fw-bold">Contenedor</span>
+            <h2 class="fw-bold text-dark mb-0 font-monospace">{{ contenedor.numero }}</h2>
+            <p class="text-secondary mb-0 small">
+                {% if contenedor.sello %}Sello: {{ contenedor.sello }} · {% endif %}
+                {% if contenedor.fecha_apertura %}Abierto el {{ contenedor.fecha_apertura|date:"d/m/Y" }}{% else %}Sin fecha de apertura{% endif %}
+                {% if contenedor.observacion %} · {{ contenedor.observacion }}{% endif %}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'editar_contenedor' contenedor.pk %}" class="btn btn-light border"><i class="bi bi-pencil me-1"></i> Editar</a>
+            <a href="{% url 'gestion' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i> Volver</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Vehículos que venían en este contenedor</h5>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ vehiculos|length }}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted">
+                            <tr><th class="ps-4">Chasis</th><th>Vehículo</th><th>Cliente</th><th>Estado</th><th class="text-end pe-4">Acciones</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for v in vehiculos %}
+                        <tr>
+                            <td class="ps-4 fw-semibold font-monospace"><a href="{% url 'detalle_vehiculo' v.pk %}">{{ v.chasis }}</a></td>
+                            <td>{{ v.marca }} {{ v.modelo }}</td>
+                            <td>{{ v.cliente.nombre_completo }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ v.get_estado_display }}</span></td>
+                            <td class="text-end pe-4">
+                                <form method="post" action="{% url 'quitar_de_contenedor' contenedor.pk v.pk %}" class="d-inline"
+                                      onsubmit="return confirm('¿Quitar este vehículo del contenedor?');">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger" title="Quitar"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Aún no hay vehículos anotados en este contenedor.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <h5 class="fw-bold mb-1">Anotar vehículos</h5>
+                <p class="text-muted small">Marca los vehículos que venían dentro de este contenedor.</p>
+                {% if disponibles %}
+                <form method="post" action="{% url 'agregar_a_contenedor' contenedor.pk %}">
+                    {% csrf_token %}
+                    <div style="max-height: 320px; overflow-y: auto;" class="border rounded-3 p-2 mb-3">
+                        {% for v in disponibles %}
+                        <div class="form-check py-1">
+                            <input class="form-check-input" type="checkbox" name="vehiculos" value="{{ v.pk }}" id="v{{ v.pk }}">
+                            <label class="form-check-label small" for="v{{ v.pk }}">
+                                <span class="font-monospace fw-semibold">{{ v.chasis }}</span><br>
+                                <span class="text-muted">{{ v.marca }} {{ v.modelo }} · {{ v.cliente.nombre_completo }}</span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-rodamar w-100"><i class="bi bi-box-seam me-1"></i> Anotar seleccionados</button>
+                </form>
+                {% else %}
+                <p class="text-muted small mb-0">Todos los vehículos ya tienen contenedor asignado.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
