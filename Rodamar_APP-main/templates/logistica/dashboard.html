@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+
+{% block title %}Panel de Control Ro-Ro | Rodamar Logística{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <!-- Encabezado de la Consola Operativa -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary px-3 py-1 rounded-pill fw-semibold">Terminal Ro-Ro Activa</span>
+                <span class="text-muted small"><i class="bi bi-clock me-1"></i>En tiempo real</span>
+            </div>
+            <h2 class="fw-bold text-dark mb-0">Consola de Control y Patios</h2>
+            <p class="text-secondary small mb-0">Trazabilidad de vehículos desembarcados, inspecciones y asignación de transporte</p>
+        </div>
+        
+        <div class="d-flex flex-wrap gap-2">
+            {% if es_operador %}
+            <button type="button" class="btn btn-rodamar" data-bs-toggle="modal" data-bs-target="#modalNuevoVehiculo">
+                <i class="bi bi-plus-lg me-1"></i> Ingreso de Unidad
+            </button>
+            <button type="button" class="btn btn-rodamar-outline" data-bs-toggle="modal" data-bs-target="#modalNuevoBuque">
+                <i class="bi bi-water me-1"></i> Nuevo Buque
+            </button>
+            <button type="button" class="btn btn-rodamar-outline" data-bs-toggle="modal" data-bs-target="#modalNuevoCamion">
+                <i class="bi bi-truck me-1"></i> Asignar Cigüeña
+            </button>
+            {% endif %}
+            <a href="/api/" class="btn btn-light border" target="_blank">
+                <i class="bi bi-code-slash me-1 text-primary"></i> REST API
+            </a>
+        </div>
+    </div>
+
+    <!-- Indicadores de Patio y Flujo (KPIs) -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-uppercase text-muted fw-bold small">Inventario en Terminal</span>
+                        <h2 class="fw-extrabold my-1 text-dark">{{ total }}</h2>
+                        <span class="badge bg-light text-secondary border">Capacidad de custodia</span>
+                    </div>
+                    <div class="bg-primary-subtle text-primary p-3 rounded-4 fs-3">
+                        <i class="bi bi-car-front-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-uppercase text-muted fw-bold small">Fase 1: Muelle / Descarga</span>
+                        <h2 class="fw-extrabold my-1 text-warning">{{ encontrados }}</h2>
+                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pendiente traslado</span>
+                    </div>
+                    <div class="bg-warning-subtle text-warning p-3 rounded-4 fs-3">
+                        <i class="bi bi-box-arrow-in-down"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-uppercase text-muted fw-bold small">Fase 2: Patio & Inspección</span>
+                        <h2 class="fw-extrabold my-1 text-info">{{ en_proceso|add:en_camino }}</h2>
+                        <span class="badge bg-info-subtle text-info border border-info-subtle">Faena técnica activa</span>
+                    </div>
+                    <div class="bg-info-subtle text-info p-3 rounded-4 fs-3">
+                        <i class="bi bi-wrench-adjustable"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="text-uppercase text-muted fw-bold small">Fase 3: Despachados</span>
+                        <h2 class="fw-extrabold my-1 text-success">{{ entregados }}</h2>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Entregado a cliente</span>
+                    </div>
+                    <div class="bg-success-subtle text-success p-3 rounded-4 fs-3">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Inventario -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-lg-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ q }}" class="form-control bg-light border-start-0" placeholder="Buscar por Chasis (VIN), Buque, Marca o Cliente...">
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <select name="estado" class="form-select bg-light">
+                    <option value="">Todos los Estados Operativos</option>
+                    {% for clave, etiqueta in estados %}
+                        <option value="{{ clave }}" {% if filtro_estado == clave %}selected{% endif %}>{{ etiqueta }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-lg-2 d-flex gap-2">
+                <button type="submit" class="btn btn-rodamar flex-grow-1">Filtrar</button>
+                <a href="{% url 'dashboard' %}" class="btn btn-light border" title="Limpiar"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Grilla de Unidades -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mb-4">
+        <div class="card-header bg-white border-bottom p-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-grid-3x3-gap-fill text-primary"></i>
+                <h5 class="fw-bold mb-0 text-dark">Vehículos en Gestión de Muelle y Patios</h5>
+            </div>
+            <span class="badge bg-light text-dark border">{{ vehiculos.count }} unidades listadas</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="small text-muted text-uppercase">
+                        <th class="ps-4">Chasis (VIN)</th>
+                        <th>Vehículo</th>
+                        <th>Buque de Arribo</th>
+                        <th>Consignatario / Cliente</th>
+                        <th>Ubicación en Patio</th>
+                        <th>Estado</th>
+                        {% if es_operador %}<th>Transición de Estado</th>{% endif %}
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in vehiculos %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="fw-bold text-primary font-monospace">{{ v.chasis }}</span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ v.marca }} {{ v.modelo }}</div>
+                            <small class="text-muted">{{ v.color|default:"Sin color reg." }}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-1">
+                                <i class="bi bi-water text-info"></i>
+                                <span class="fw-semibold">{{ v.buque.nombre|default:"En Fondeo" }}</span>
+                            </div>
+                            <small class="text-muted">Viaje: {{ v.buque.numero_viaje|default:"N/A" }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ v.cliente.nombre_completo|default:"Importación General" }}</div>
+                            <small class="text-muted">{{ v.cliente.rut_o_id|default:"" }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border font-monospace">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ v.ubicacion_patio|default:"Patio Muelle" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill px-3 py-2 
+                                {% if v.estado == 'ENTREGADO' %}bg-success-subtle text-success border border-success-subtle
+                                {% elif v.estado == 'EN_CAMINO' %}bg-primary-subtle text-primary border border-primary-subtle
+                                {% elif v.estado == 'EN_PROCESO' %}bg-info-subtle text-info border border-info-subtle
+                                {% else %}bg-warning-subtle text-warning border border-warning-subtle{% endif %}">
+                                {{ v.get_estado_display|default:v.estado }}
+                            </span>
+                        </td>
+                        {% if es_operador %}
+                        <td>
+                            <form method="post" action="{% url 'actualizar_estado' v.pk %}" class="d-flex gap-1">
+                                {% csrf_token %}
+                                <select name="nuevo_estado" class="form-select form-select-sm bg-light" style="width: 140px;">
+                                    {% for clave, etiqueta in estados %}
+                                        <option value="{{ clave }}" {% if v.estado == clave %}selected{% endif %}>{{ clave }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary" title="Actualizar Fase">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </form>
+                        </td>
+                        {% endif %}
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                <a href="{% url 'rastreo' %}?codigo={{ v.chasis }}" class="btn btn-sm btn-light border" title="Ver Hoja de Ruta">
+                                    <i class="bi bi-clock-history"></i>
+                                </a>
+                                {% if es_operador %}
+                                <form method="post" action="{% url 'eliminar_vehiculo' v.pk %}" onsubmit="return confirm('¿Confirmas eliminar esta unidad?');" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger border-start-0" title="Eliminar Registro">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            No hay unidades automotrices registradas bajo los parámetros seleccionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modales de Gestión Operativa (CRUD) -->
+{% if es_operador %}
+<!-- Modal Vehículo -->
+<div class="modal fade" id="modalNuevoVehiculo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-bottom p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-car-front text-primary me-2"></i> Registrar Descarga de Unidad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'registrar_vehiculo' %}">
+                {% csrf_token %}
+                <div class="modal-body p-4 row g-3">
+                    {% for field in form %}
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>
+                        {{ field }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer border-top p-3">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-rodamar">Guardar en Patio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Buque -->
+<div class="modal fade" id="modalNuevoBuque" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-bottom p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-water text-primary me-2"></i> Registrar Buque Ro-Ro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'registrar_buque' %}">
+                {% csrf_token %}
+                <div class="modal-body p-4 row g-3">
+                    {% for field in form_buque %}
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>
+                        {{ field }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer border-top p-3">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-rodamar">Registrar Atraque</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Camión Cigüeña -->
+<div class="modal fade" id="modalNuevoCamion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-bottom p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-truck text-primary me-2"></i> Registrar Camión Nodriza</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'registrar_camion' %}">
+                {% csrf_token %}
+                <div class="modal-body p-4 row g-3">
+                    {% for field in form_camion %}
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>
+                        {{ field }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer border-top p-3">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-rodamar">Guardar Transporte</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.modal input, .modal select').forEach(el => {
+        el.classList.add('form-control', 'bg-light');
+    });
+</script>
+{% endif %}
+{% endblock %}

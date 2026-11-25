@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+
+{% block title %}Consulta de Carga | Rodamar Logística{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Buscador Principal -->
+    <div class="text-center mb-5" style="max-width: 720px; margin: 0 auto;">
+        <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 rounded-pill mb-2">
+            Portal Público de Clientes
+        </span>
+        <h2 class="fw-extrabold text-dark mb-2">Consulta y Rastreo de Vehículos</h2>
+        <p class="text-muted">
+            Ingresa tu <strong>Número de Chasis (VIN)</strong> individual, o escribe el <strong>RUT / Nombre de tu Empresa</strong> para ver toda tu flota desembarcada.
+        </p>
+        
+        <form method="get" action="{% url 'rastreo' %}" class="mt-4">
+            <div class="input-group input-group-lg shadow-sm rounded-4 overflow-hidden border">
+                <span class="input-group-text bg-white border-0 ps-3">
+                    <i class="bi bi-search text-primary"></i>
+                </span>
+                <input type="text" name="codigo" class="form-control border-0 px-2 fs-6" 
+                       placeholder="Ej: ROD-DEMO-001 ó 76.111.111-1 ó Automotriz del Norte" 
+                       value="{{ termino }}" required autofocus>
+                <button class="btn btn-rodamar px-4 fw-bold" type="submit">Consultar</button>
+            </div>
+            <div class="form-text mt-2 text-muted small">
+                Sin registros ni contraseñas. Acceso transparente e inmediato.
+            </div>
+        </form>
+    </div>
+
+    <!-- CASO 1: Se encontró una lista de vehículos (Empresa / RUT / Múltiples) -->
+    {% if vehiculos_empresa %}
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mb-4">
+        <div class="card-header bg-white border-bottom p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <span class="text-muted small text-uppercase fw-bold">Flota Encontrada</span>
+                <h4 class="fw-bold text-dark mb-0">
+                    {% if cliente_encontrado %}
+                        <i class="bi bi-building me-2 text-primary"></i>{{ cliente_encontrado.nombre_completo }}
+                        <span class="fs-6 text-muted fw-normal ms-2">({{ cliente_encontrado.rut_o_id }})</span>
+                    {% else %}
+                        Resultados para: "{{ termino }}"
+                    {% endif %}
+                </h4>
+            </div>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fs-6 rounded-pill">
+                {{ vehiculos_empresa.count }} vehículos asignados
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="small text-muted text-uppercase">
+                        <th class="ps-4">Chasis (VIN)</th>
+                        <th>Vehículo</th>
+                        <th>Buque de Origen</th>
+                        <th>Ubicación Patio</th>
+                        <th>Estado Operativo</th>
+                        <th class="text-end pe-4">Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in vehiculos_empresa %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="fw-bold font-monospace text-primary">{{ v.chasis }}</span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ v.marca }} {{ v.modelo }}</div>
+                            <small class="text-muted">{{ v.color|default:"Color s/d" }}</small>
+                        </td>
+                        <td>
+                            <i class="bi bi-water text-info me-1"></i>{{ v.buque.nombre|default:"En Fondeo" }}
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border font-monospace">
+                                <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ v.ubicacion_patio|default:"Patio Muelle" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill px-3 py-2 
+                                {% if v.estado == 'ENTREGADO' %}bg-success-subtle text-success
+                                {% elif v.estado == 'EN_CAMINO' %}bg-primary-subtle text-primary
+                                {% elif v.estado == 'EN_PROCESO' %}bg-info-subtle text-info
+                                {% else %}bg-warning-subtle text-warning{% endif %}">
+                                {{ v.get_estado_display|default:v.estado }}
+                            </span>
+                        </td>
+                        <td class="text-end pe-4">
+                            <a href="{% url 'rastreo' %}?codigo={{ v.chasis }}" class="btn btn-sm btn-rodamar py-1 px-3">
+                                Ver Trazabilidad <i class="bi bi-arrow-right ms-1"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CASO 2: Ficha Detallada de 1 Vehículo (por Chasis individual o clic desde la lista) -->
+    {% if vehiculo %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden bg-white">
+        <div class="card-header bg-white border-bottom p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <span class="text-muted small text-uppercase fw-bold">Unidad Automotriz</span>
+                <h3 class="fw-bold mb-0 text-primary font-monospace">{{ vehiculo.chasis }}</h3>
+            </div>
+            <div>
+                <span class="badge rounded-pill px-3 py-2 fs-6 
+                    {% if vehiculo.estado == 'ENTREGADO' %}bg-success-subtle text-success border border-success-subtle
+                    {% elif vehiculo.estado == 'EN_CAMINO' %}bg-primary-subtle text-primary border border-primary-subtle
+                    {% elif vehiculo.estado == 'EN_PROCESO' %}bg-info-subtle text-info border border-info-subtle
+                    {% else %}bg-warning-subtle text-warning border border-warning-subtle{% endif %}">
+                    {{ vehiculo.get_estado_display|default:vehiculo.estado }}
+                </span>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="row g-4 text-center text-md-start">
+                <div class="col-6 col-md-3">
+                    <span class="text-muted small text-uppercase fw-semibold">Marca / Modelo</span>
+                    <p class="fw-bold fs-5 mb-0 text-dark">{{ vehiculo.marca }} {{ vehiculo.modelo }}</p>
+                    <small class="text-muted">Color: {{ vehiculo.color|default:"No especificado" }}</small>
+                </div>
+                <div class="col-6 col-md-3">
+                    <span class="text-muted small text-uppercase fw-semibold">Buque de Desembarque</span>
+                    <p class="fw-bold fs-5 mb-0 text-dark">{{ vehiculo.buque.nombre|default:"Sin asignar" }}</p>
+                    <small class="text-muted">Viaje: {{ vehiculo.buque.numero_viaje|default:"N/A" }}</small>
+                </div>
+                <div class="col-6 col-md-3">
+                    <span class="text-muted small text-uppercase fw-semibold">Ubicación en Patio</span>
+                    <p class="fw-bold fs-5 mb-0 text-danger font-monospace">
+                        <i class="bi bi-geo-alt-fill"></i> {{ vehiculo.ubicacion_patio|default:"Patio Muelle" }}
+                    </p>
+                    <small class="text-muted">Sector de inspección</small>
+                </div>
+                <div class="col-6 col-md-3">
+                    <span class="text-muted small text-uppercase fw-semibold">Consignatario / Empresa</span>
+                    <p class="fw-bold fs-5 mb-0 text-dark">{{ vehiculo.cliente.nombre_completo|default:"Importador General" }}</p>
+                    <small class="text-muted">RUT: {{ vehiculo.cliente.rut_o_id|default:"S/R" }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Línea de Tiempo del Vehículo -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+        <h5 class="fw-bold mb-4 text-dark">
+            <i class="bi bi-clock-history me-2 text-primary"></i> Línea de Trazabilidad Operativa
+        </h5>
+        
+        {% if vehiculo.historial.all %}
+            <div class="position-relative ps-4 border-start border-2 border-primary-subtle ms-3">
+                {% for h in vehiculo.historial.all %}
+                <div class="mb-4 position-relative">
+                    <div class="position-absolute rounded-circle bg-primary" 
+                         style="width: 14px; height: 14px; left: -31px; top: 4px; border: 3px solid #fff; box-shadow: 0 0 0 2px #BFDBFE;">
+                    </div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-baseline mb-1">
+                        <h6 class="fw-bold text-dark mb-0">
+                            {{ h.get_estado_anterior_display }} &rarr; 
+                            <span class="text-primary">{{ h.get_estado_nuevo_display }}</span>
+                        </h6>
+                        <small class="text-muted fw-semibold">{{ h.fecha|date:"d M Y, H:i" }}</small>
+                    </div>
+                    <p class="text-secondary small mb-0">{{ h.observaciones|default:"Actualización de estado registrada en patio." }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                Unidad ingresada al sistema. Pendiente de movimientos de patio adicionales.
+            </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- CASO 3: Búsqueda sin resultados -->
+    {% if termino and not vehiculo and not vehiculos_empresa %}
+    <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+        <div class="bg-warning-subtle text-warning rounded-circle d-inline-flex align-items-center justify-content-center p-3 mx-auto mb-3" style="width: 70px; height: 70px;">
+            <i class="bi bi-search fs-1"></i>
+        </div>
+        <h4 class="fw-bold text-dark">No encontramos coincidencias para "{{ termino }}"</h4>
+        <p class="text-muted mb-0" style="max-width: 500px; margin: 0 auto;">
+            Verifica haber escrito correctamente el Chasis (ej. <code>ROD-DEMO-001</code>), el RUT de la empresa (ej. <code>76.111.111-1</code>) o el nombre comercial.
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

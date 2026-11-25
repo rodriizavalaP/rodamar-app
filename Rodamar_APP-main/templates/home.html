@@ -1,0 +1,348 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Rodamar | Trazabilidad Portuaria y Logística Automotriz{% endblock %}
+
+{% block content %}
+<style>
+    .hero-section {
+        background: radial-gradient(circle at top right, #1E3A8A 0%, #0A192F 70%);
+        color: white;
+        padding: 5.5rem 0 6rem;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-section::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 40px;
+        background: var(--rodamar-bg);
+        clip-path: polygon(0 100%, 100% 100%, 100% 0);
+    }
+
+    .tracking-card {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 2.2rem;
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2);
+    }
+
+    .feature-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        border: 1px solid var(--rodamar-border);
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 16px 30px -10px rgba(0, 0, 0, 0.08);
+        border-color: #BFDBFE;
+    }
+
+    .feature-icon {
+        width: 54px;
+        height: 54px;
+        border-radius: 12px;
+        background: #EFF6FF;
+        color: var(--rodamar-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    /* Widget idéntico a OpenWeatherMap */
+    .owm-card {
+        background-color: #0b69b7;
+        color: #ffffff;
+        border-radius: 16px;
+        overflow: hidden;
+        font-family: system-ui, -apple-system, sans-serif;
+    }
+    .owm-card-body {
+        padding: 1.5rem 1.8rem 1.2rem;
+    }
+    .owm-city-title {
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+    }
+    .owm-temp {
+        font-size: 3.5rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+    .owm-footer {
+        background-color: #085596;
+        text-align: center;
+        padding: 6px;
+        font-size: 0.8rem;
+    }
+    .owm-footer a {
+        color: #cce4ff;
+        text-decoration: underline;
+    }
+</style>
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center gy-5">
+            <div class="col-lg-7">
+                <span class="badge bg-primary-subtle text-primary fw-semibold px-3 py-2 rounded-pill mb-3">
+                    <i class="bi bi-water me-1"></i> Muellaje Ro-Ro & Logística Portuaria
+                </span>
+                <h1 class="display-4 fw-extrabold tracking-tight mb-3">
+                    Control y trazabilidad de vehículos desde el buque hasta el patio.
+                </h1>
+                <p class="lead text-light text-opacity-75 mb-4" style="font-size: 1.15rem;">
+                    Centralizamos la descarga, inspección física y despacho de unidades automotrices en tiempo real para navieras, concesionarias y operadores portuarios.
+                </p>
+
+                <!-- 2 Botones Operativos Externos / Estado Portuario -->
+                <div class="d-flex flex-wrap gap-3">
+                    <!-- 1. Planificación Naviera -->
+                    <a href="http://sgp.epi.cl/docs/plnnn.html?_ga=2.132468301.2106468306.1668687591-23637256.1662555908&_gl=1*am6yvr*_ga*MjM2MzcyNTYuMTY2MjU1NTkwOA..*_ga_FXRZMJ51NF*MTY2ODY5MzQ3My4yMi4xLjE2Njg2OTQwNzQuMC4wLjA" 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       class="btn btn-outline-light py-3 px-4 fw-semibold fs-6 d-inline-flex align-items-center">
+                        <i class="bi bi-calendar3-week me-2"></i> Planificación Portuaria
+                    </a>
+
+                    <!-- 2. Clima / Estado del Puerto (Abre el Modal) -->
+                    <button type="button" 
+                            class="btn btn-outline-light py-3 px-4 fw-semibold fs-6 d-inline-flex align-items-center" 
+                            data-bs-toggle="modal" 
+                            data-bs-target="#modalClimaPuerto">
+                        <i class="bi bi-cloud-sun me-2"></i> Clima y Estado de Puerto
+                    </button>
+                </div>
+            </div>
+
+            <!-- Buscador Rápido de Carga -->
+            <div class="col-lg-5">
+                <div class="tracking-card text-dark">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <div class="bg-primary text-white rounded-circle p-2 d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                            <i class="bi bi-car-front-fill fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="fw-bold mb-0">Rastreo de Carga</h5>
+                            <small class="text-muted">Consulta por Chasis, RUT o Empresa</small>
+                        </div>
+                    </div>
+                    
+                    <form action="{% url 'rastreo' %}" method="get">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Chasis (VIN) o Identificador de Cliente</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-upc-scan text-muted"></i></span>
+                                <input type="text" name="codigo" class="form-control form-control-lg bg-light border-start-0" placeholder="Ej: ROD-DEMO-001 ó 76.111.111-1" required>
+                            </div>
+                            <small class="text-muted mt-1 d-block" style="font-size: 0.8rem;">Sin necesidad de registro o cuenta.</small>
+                        </div>
+                        <button type="submit" class="btn btn-rodamar w-100 py-3 fs-6">
+                            Consultar Ubicación y Estado <i class="bi bi-arrow-right ms-1"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modal: Estado del Puerto y Condiciones Meteorológicas -->
+<div class="modal fade" id="modalClimaPuerto" tabindex="-1" aria-labelledby="modalClimaPuertoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-0 bg-light p-3 px-4">
+                <h5 class="modal-title fw-bold text-dark" id="modalClimaPuertoLabel">
+                    <i class="bi bi-compass text-primary me-2"></i> Bahía de Iquique &mdash; Condiciones Meteorológicas
+                </h5>
+                <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-4 bg-white">
+                
+                <!-- Tarjeta Estilo OpenWeatherMap -->
+                <div class="owm-card shadow">
+                    <div class="owm-card-body">
+                        <div class="row align-items-center mb-3">
+                            <div class="col-sm-6">
+                                <span class="owm-city-title">Iquique</span>
+                            </div>
+                            <div class="col-sm-6 text-sm-end">
+                                <span id="owm-date-time" class="fw-medium text-white-50">--:--, --</span>
+                            </div>
+                        </div>
+
+                        <div class="row align-items-center gy-3">
+                            <!-- Columna Temperatura e Icono -->
+                            <div class="col-md-5">
+                                <div class="d-flex align-items-center gap-3">
+                                    <i id="owm-icon" class="bi bi-cloud-sun-fill display-4 text-white"></i>
+                                    <span class="owm-temp"><span id="owm-temp">18</span>°<span style="font-size: 2.2rem;">C</span></span>
+                                </div>
+                                <div id="owm-desc" class="fs-5 fw-semibold text-capitalize mt-1">Nubes Dispersas</div>
+                            </div>
+
+                            <!-- Columna Parámetros Meteorológicos -->
+                            <div class="col-md-7">
+                                <div class="row g-2">
+                                    <div class="col-6 d-flex align-items-center gap-2">
+                                        <i class="bi bi-droplet-fill"></i>
+                                        <span>Humidity: <strong id="owm-humidity">78%</strong></span>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-center gap-2">
+                                        <i class="bi bi-speedometer2"></i>
+                                        <span>Pressure: <strong id="owm-pressure">1015 mb</strong></span>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-center gap-2">
+                                        <i class="bi bi-arrow-up-right-circle"></i>
+                                        <span>Wind: <strong id="owm-wind">5 km/h</strong></span>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-center gap-2">
+                                        <i class="bi bi-wind"></i>
+                                        <span>Wind Gust: <strong id="owm-gust">8 km/h</strong></span>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-center gap-2">
+                                        <i class="bi bi-clouds-fill"></i>
+                                        <span>Clouds: <strong id="owm-clouds">20%</strong></span>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-center gap-2">
+                                        <i class="bi bi-eye-fill"></i>
+                                        <span>Visibility: <strong id="owm-vis">10 km</strong></span>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-center gap-2">
+                                        <i class="bi bi-sunrise-fill"></i>
+                                        <span>Sunrise: <strong id="owm-sunrise">06:45 am</strong></span>
+                                    </div>
+                                    <div class="col-6 d-flex align-items-center gap-2">
+                                        <i class="bi bi-sunset-fill"></i>
+                                        <span>Sunset: <strong id="owm-sunset">07:20 pm</strong></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enlace inferior OpenWeatherMap -->
+                    <div class="owm-footer">
+                        <a href="https://openweathermap.org/city/3887127" target="_blank" rel="noopener noreferrer">
+                            Weather from OpenWeatherMap
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer border-0 bg-light p-3 px-4 justify-content-between">
+                <span class="text-muted small"><i class="bi bi-shield-check text-success me-1"></i> Puerto Abierto &mdash; Condiciones normales de faena</span>
+                <button type="button" class="btn btn-secondary px-4 rounded-3" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Características Principales -->
+<section class="py-5 mt-4">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="text-primary fw-bold text-uppercase small">Ventajas Operativas</span>
+            <h2 class="fw-bold mt-1">Ecosistema Portuario Automatizado</h2>
+            <p class="text-muted">Eliminamos las planillas dispersas con seguimiento continuo.</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-box-arrow-in-down"></i>
+                    </div>
+                    <h5 class="fw-bold">Descarga Ro-Ro en Muelle</h5>
+                    <p class="text-muted small">
+                        Registro del atraque del buque y captura inmediata de las unidades desembarcadas en el muelle.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-geo-alt"></i>
+                    </div>
+                    <h5 class="fw-bold">Control de Patios y Bloques</h5>
+                    <p class="text-muted small">
+                        Asignación de cuadrante y posición de parqueo para localización inmediata de cada vehículo.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                    <h5 class="fw-bold">Despacho a Cigüeña</h5>
+                    <p class="text-muted small">
+                        Coordinación con camiones nodriza/cigüeña para traslado final seguro y trazable hacia concesionarias.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Script para actualizar hora y clima de Iquique automáticamente -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Actualizar Fecha y Hora en vivo de la tarjeta
+    function updateDateTime() {
+        const now = new Date();
+        const options = { 
+            hour: 'numeric', 
+            minute: '2-digit', 
+            hour12: true, 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+        };
+        const formatted = now.toLocaleString('en-US', options);
+        const el = document.getElementById("owm-date-time");
+        if (el) el.textContent = formatted;
+    }
+    updateDateTime();
+    setInterval(updateDateTime, 30000);
+
+    // Consulta de clima en vivo (Open-Meteo libre para Iquique: Lat -20.21, Lon -70.14)
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=-20.2167&longitude=-70.1419&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,cloud_cover&daily=sunrise,sunset&timezone=America%2FSantiago")
+    .then(res => res.json())
+    .then(data => {
+        if (data.current) {
+            document.getElementById("owm-temp").innerText = Math.round(data.current.temperature_2m);
+            document.getElementById("owm-humidity").innerText = data.current.relative_humidity_2m + " %";
+            document.getElementById("owm-pressure").innerText = Math.round(data.current.surface_pressure) + " mb";
+            document.getElementById("owm-wind").innerText = Math.round(data.current.wind_speed_10m) + " km/h";
+            document.getElementById("owm-gust").innerText = Math.round(data.current.wind_gusts_10m) + " km/h";
+            document.getElementById("owm-clouds").innerText = data.current.cloud_cover + "%";
+            
+            // Descripción según nubosidad
+            const clouds = data.current.cloud_cover;
+            const descEl = document.getElementById("owm-desc");
+            if (clouds < 20) descEl.innerText = "Cielo Despejado";
+            else if (clouds < 60) descEl.innerText = "Nubes Dispersas";
+            else descEl.innerText = "Nublado";
+        }
+        if (data.daily && data.daily.sunrise.length > 0) {
+            document.getElementById("owm-sunrise").innerText = data.daily.sunrise[0].split("T")[1];
+            document.getElementById("owm-sunset").innerText = data.daily.sunset[0].split("T")[1];
+        }
+    })
+    .catch(err => console.log("Datos de clima por defecto cargados."));
+});
+</script>
+{% endblock %}
