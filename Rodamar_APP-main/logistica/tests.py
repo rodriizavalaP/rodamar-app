@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.contrib.auth.models import User, Group
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APITestCase
@@ -224,3 +225,105 @@ class SeguridadYCrudWebTest(TestCase):
         api = APIClient()
         api.force_authenticate(user=self.cliente_user)
         self.assertEqual(api.get('/api/clientes/').status_code, 403)
+
+
+PNG_MINIMO = b'\x89PNG\r\n\x1a\n' + b'0' * 32
+
+
+class CiguenaYFotosTest(TestCase):
+    def setUp(self):
+        self.operador = User.objects.create_user('op_fotos', password='clave12345')
+        self.operador.groups.add(Group.objects.get_or_create(name='Operadores')[0])
+        self.cliente_user = User.objects.create_user('cli_fotos', password='clave12345')
+        self.cliente_user.groups.add(Group.objects.get_or_create(name='Clientes')[0])
+        self.v1 = crear_vehiculo_de_prueba()
+        self.v2 = Vehiculo.objects.create(
+            chasis="TEST222222", marca="Kia", modelo="Rio",
+            buque=self.v1.buque, cliente=self.v1.cliente,
+        )
+        self.camion = CamionCiguena.objects.create(
+            patente="AB-CD-12", empresa_transporte="Transportes Sur", capacidad=2,
+        )
+
+    def test_asignar_varios_vehiculos_a_una_ciguena(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        response = self.client.post(reverse('asignar_vehiculos', args=[self.camion.pk]), {
+            'vehiculos': [self.v1.pk, self.v2.pk], 'marcar_en_camino': 'on',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.v1.refresh_from_db()
+        self.assertEqual(self.v1.camion_ciguena, self.camion)
+        self.assertEqual(self.v1.estado, 'EN_CAMINO')
+        self.assertEqual(self.camion.vehiculos_cargados.count(), 2)
+        self.assertEqual(self.camion.movimientos.count(), 2)
+
+    def test_no_se_puede_superar_la_capacidad(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        v3 = Vehiculo.objects.create(
+            chasis="TEST333333", marca="Mazda", modelo="3",
+            buque=self.v1.buque, cliente=self.v1.cliente,
+        )
+        self.client.post(reverse('asignar_vehiculos', args=[self.camion.pk]), {
+            'vehiculos': [self.v1.pk, self.v2.pk, v3.pk],
+        })
+        self.assertEqual(self.camion.vehiculos_cargados.count(), 0)
+
+    def test_quitar_vehiculo_de_la_ciguena(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        self.v1.camion_ciguena = self.camion
+        self.v1.save()
+        self.client.post(reverse('quitar_vehiculo_camion', args=[self.camion.pk, self.v1.pk]))
+        self.v1.refresh_from_db()
+        self.assertIsNone(self.v1.camion_ciguena)
+
+    def test_cliente_no_puede_asignar(self):
+        self.client.login(username='cli_fotos', password='clave12345')
+        self.client.post(reverse('asignar_vehiculos', args=[self.camion.pk]), {'vehiculos': [self.v1.pk]})
+        self.assertEqual(self.camion.vehiculos_cargados.count(), 0)
+
+    def test_subir_foto_valida(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        archivo = SimpleUploadedFile('llegada.png', PNG_MINIMO, content_type='image/png')
+        self.client.post(reverse('subir_foto', args=[self.v1.pk]), {
+            'imagenes': archivo, 'tipo': 'CHEQUEO', 'descripcion': 'Sin daños',
+        })
+        self.assertEqual(self.v1.fotos.count(), 1)
+        foto = self.v1.fotos.first()
+        response = self.client.get(reverse('ver_foto', args=[foto.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'image/png')
+
+    def test_rechaza_archivo_que_no_es_imagen(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        falso = SimpleUploadedFile('virus.png', b'esto no es una imagen', content_type='image/png')
+        self.client.post(reverse('subir_foto', args=[self.v1.pk]), {'imagenes': falso, 'tipo': 'LLEGADA'})
+        self.assertEqual(self.v1.fotos.count(), 0)
+
+    def test_rechaza_foto_mayor_a_2mb(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        grande = SimpleUploadedFile('grande.png', PNG_MINIMO + b'0' * (2 * 1024 * 1024), content_type='image/png')
+        self.client.post(reverse('subir_foto', args=[self.v1.pk]), {'imagenes': grande, 'tipo': 'LLEGADA'})
+        self.assertEqual(self.v1.fotos.count(), 0)
+
+    def test_anonimo_y_cliente_no_ven_las_fotos(self):
+        from .models import FotoVehiculo
+        foto = FotoVehiculo.objects.create(
+            vehiculo=self.v1, tipo='LLEGADA', imagen=PNG_MINIMO, content_type='image/png')
+        self.assertEqual(self.client.get(reverse('ver_foto', args=[foto.pk])).status_code, 302)
+        self.client.login(username='cli_fotos', password='clave12345')
+        self.assertEqual(self.client.get(reverse('ver_foto', args=[foto.pk])).status_code, 302)
+
+    def test_eliminar_foto(self):
+        from .models import FotoVehiculo
+        self.client.login(username='op_fotos', password='clave12345')
+        foto = FotoVehiculo.objects.create(
+            vehiculo=self.v1, tipo='LLEGADA', imagen=PNG_MINIMO, content_type='image/png')
+        self.client.post(reverse('eliminar_foto', args=[foto.pk]))
+        self.assertEqual(self.v1.fotos.count(), 0)
+
+    def test_ficha_del_vehiculo_carga(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        response = self.client.get(reverse('detalle_vehiculo', args=[self.v1.pk]))
+        self.assertEqual(response.status_code, 200)
+        response = self.client.get(reverse('detalle_camion', args=[self.camion.pk]))
+        self.assertEqual(response.status_code, 200)

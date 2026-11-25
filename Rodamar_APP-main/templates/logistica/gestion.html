@@ -89,7 +89,7 @@
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light small text-uppercase text-muted"><tr><th class="ps-4">Patente</th><th>Empresa</th><th>Chofer</th><th>RUT chofer</th><th class="text-end pe-4">Acciones</th></tr></thead>
+                        <thead class="table-light small text-uppercase text-muted"><tr><th class="ps-4">Patente</th><th>Empresa</th><th>Chofer</th><th>RUT chofer</th><th>Carga</th><th class="text-end pe-4">Acciones</th></tr></thead>
                         <tbody>
                         {% for t in camiones %}
                         <tr>
@@ -97,14 +97,16 @@
                             <td>{{ t.empresa_transporte }}</td>
                             <td>{{ t.nombre_chofer|default:"—" }}</td>
                             <td>{{ t.rut_chofer|default:"—" }}</td>
+                            <td>{{ t.vehiculos_cargados.count }} / {{ t.capacidad }}</td>
                             <td class="text-end pe-4">
+                                <a href="{% url 'detalle_camion' t.pk %}" class="btn btn-sm btn-rodamar" title="Ver carga y asignar vehículos"><i class="bi bi-truck"></i> Carga</a>
                                 <a href="{% url 'editar_camion' t.pk %}" class="btn btn-sm btn-light border" title="Editar"><i class="bi bi-pencil"></i></a>
                                 <form method="post" action="{% url 'eliminar_camion' t.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este camión?');">
                                     {% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
                                 </form>
                             </td>
                         </tr>
-                        {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Sin camiones registrados.</td></tr>{% endfor %}
+                        {% empty %}<tr><td colspan="6" class="text-center text-muted py-4">Sin camiones registrados.</td></tr>{% endfor %}
                         </tbody>
                     </table>
                 </div>

@@ -97,6 +97,12 @@ Para probar el rol *Cliente*, usa **Registro** en el sitio: esas cuentas no pued
 - Login/logout con sesiones de Django; protección CSRF en todos los formularios.
 - Rastreo público (`/logistica/rastreo/`): solo por chasis exacto y sin datos personales del cliente.
 
+## Cigüeña con varios vehículos y fotos de chequeo
+- **Cigüeña:** cada camión tiene una capacidad. En *Clientes y catálogos → Camiones → Carga* se seleccionan varios vehículos que viajan juntos; el sistema respeta los cupos, puede marcarlos «En traslado» y deja cada asignación o retiro en el historial (con usuario y fecha).
+- **Fotos:** en el panel, el botón de la cámara de cada vehículo abre su ficha. Ahí se suben fotos (JPG, PNG o WEBP, máx. 2 MB c/u) con tipo (llegada, chequeo, daño, entrega) y observación; al hacer clic en una foto se abre ampliada. Las fotos solo las ven los operadores.
+- Las imágenes se guardan en la base de datos, por lo que funcionan igual en local y en la nube.
+- Tras actualizar el código, ejecutar `python manage.py migrate` (migración `0003`).
+
 ## Seguridad básica
 - `SECRET_KEY` y credenciales de MySQL salen de `.env` (que no se sube a Git, ver `.gitignore`).
 - Acceso restringido por rol: el panel, la gestión, la edición y la API interna son solo para Operadores/Administradores.

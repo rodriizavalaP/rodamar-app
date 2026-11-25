@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 
 # Tabla 1: Buque que arriba al puerto
@@ -34,9 +35,19 @@ class CamionCiguena(models.Model):
     empresa_transporte = models.CharField(max_length=100)
     nombre_chofer = models.CharField(max_length=120, blank=True, null=True)
     rut_chofer = models.CharField(max_length=20, blank=True, null=True)
+    # Cuántos vehículos puede llevar en un mismo viaje
+    capacidad = models.PositiveSmallIntegerField(
+        default=8,
+        validators=[MinValueValidator(1), MaxValueValidator(20)],
+        verbose_name="Capacidad (vehículos)",
+    )
 
     def __str__(self):
         return f"Cigueña: {self.patente} ({self.empresa_transporte})"
+
+    @property
+    def cupos_libres(self):
+        return max(self.capacidad - self.vehiculos_cargados.count(), 0)
 
 
 # Tabla 4: Vehículos que se descargan en el puerto
@@ -90,6 +101,15 @@ class HistorialEstado(models.Model):
         blank=True,
         related_name='movimientos_registrados'
     )
+    # Si el movimiento fue una asignación/retiro de cigüeña, queda registrado aquí
+    camion_ciguena = models.ForeignKey(
+        CamionCiguena,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='movimientos'
+    )
+    nota = models.CharField(max_length=160, blank=True, default='')
     fecha = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -99,3 +119,37 @@ class HistorialEstado(models.Model):
 
     def __str__(self):
         return f"{self.vehiculo.chasis}: {self.estado_anterior or '—'} → {self.estado_nuevo} ({self.fecha:%d-%m-%Y %H:%M})"
+
+
+# Tabla 6: Fotos del chequeo de cada vehículo (cómo llegó, daños, etc.)
+# La imagen se guarda en la propia base de datos para que funcione igual en
+# local y en la nube (Vercel no permite guardar archivos en disco).
+class FotoVehiculo(models.Model):
+    TIPOS = [
+        ('LLEGADA', 'Llegada / Descarga'),
+        ('CHEQUEO', 'Chequeo / Inspección'),
+        ('DANO', 'Daño detectado'),
+        ('ENTREGA', 'Entrega / Despacho'),
+    ]
+
+    vehiculo = models.ForeignKey(Vehiculo, on_delete=models.CASCADE, related_name='fotos')
+    tipo = models.CharField(max_length=10, choices=TIPOS, default='LLEGADA')
+    descripcion = models.CharField(max_length=160, blank=True, default='')
+    imagen = models.BinaryField(editable=False)
+    content_type = models.CharField(max_length=30)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='fotos_subidas'
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha']
+        verbose_name = "Foto de Vehículo"
+        verbose_name_plural = "Fotos de Vehículos"
+
+    def __str__(self):
+        return f"{self.vehiculo.chasis} - {self.get_tipo_display()} ({self.fecha:%d-%m-%Y})"

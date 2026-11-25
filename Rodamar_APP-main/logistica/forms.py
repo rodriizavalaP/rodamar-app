@@ -28,12 +28,13 @@ class ClienteForm(forms.ModelForm):
 class CamionCiguenaForm(forms.ModelForm):
     class Meta:
         model = CamionCiguena
-        fields = ['patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer']
+        fields = ['patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer', 'capacidad']
         widgets = {
             'patente': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: ABCD-12'}),
             'empresa_transporte': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Transportes del Pacífico'}),
             'nombre_chofer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Juan Pérez'}),
             'rut_chofer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 15.432.198-7'}),
+            'capacidad': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 20}),
         }
 
 # Formulario para registrar un Vehículo

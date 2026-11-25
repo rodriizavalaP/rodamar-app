@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Buque, Cliente, CamionCiguena, Vehiculo, HistorialEstado
+from .models import Buque, Cliente, CamionCiguena, Vehiculo, HistorialEstado, FotoVehiculo
 
 
 @admin.register(Buque)
@@ -18,7 +18,7 @@ class ClienteAdmin(admin.ModelAdmin):
 
 @admin.register(CamionCiguena)
 class CamionCiguenaAdmin(admin.ModelAdmin):
-    list_display = ('patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer')
+    list_display = ('patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer', 'capacidad')
     search_fields = ('patente', 'empresa_transporte', 'nombre_chofer')
     list_filter = ('empresa_transporte',)
 
@@ -42,3 +42,12 @@ class HistorialEstadoAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(FotoVehiculo)
+class FotoVehiculoAdmin(admin.ModelAdmin):
+    list_display = ('vehiculo', 'tipo', 'descripcion', 'usuario', 'fecha')
+    list_filter = ('tipo', 'fecha')
+    search_fields = ('vehiculo__chasis', 'descripcion')
+    # La imagen se sube desde el panel web; aquí solo se administran los datos.
+    exclude = ('imagen',)

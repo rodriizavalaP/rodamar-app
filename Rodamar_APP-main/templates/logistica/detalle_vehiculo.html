@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ vehiculo.chasis }} | Chequeo de vehículo{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <span class="text-muted small text-uppercase fw-bold">Ficha y chequeo de llegada</span>
+            <h2 class="fw-bold text-dark mb-0 font-monospace">{{ vehiculo.chasis }}</h2>
+            <p class="text-secondary mb-0">{{ vehiculo.marca }} {{ vehiculo.modelo }}{% if vehiculo.color %} · {{ vehiculo.color }}{% endif %}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'editar_vehiculo' vehiculo.pk %}" class="btn btn-light border"><i class="bi bi-pencil me-1"></i> Editar datos</a>
+            <a href="{% url 'dashboard' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i> Volver al panel</a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Datos del vehículo -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <h5 class="fw-bold mb-3">Datos</h5>
+                <dl class="row mb-0 small">
+                    <dt class="col-5 text-muted">Estado</dt><dd class="col-7 fw-semibold">{{ vehiculo.get_estado_display }}</dd>
+                    <dt class="col-5 text-muted">Ubicación</dt><dd class="col-7">{{ vehiculo.ubicacion_patio|default:"Patio Muelle" }}</dd>
+                    <dt class="col-5 text-muted">Buque</dt><dd class="col-7">{{ vehiculo.buque.nombre }} ({{ vehiculo.buque.numero_viaje }})</dd>
+                    <dt class="col-5 text-muted">Cliente</dt><dd class="col-7">{{ vehiculo.cliente.nombre_completo }}</dd>
+                    <dt class="col-5 text-muted">Cigüeña</dt>
+                    <dd class="col-7">
+                        {% if vehiculo.camion_ciguena %}
+                            <a href="{% url 'detalle_camion' vehiculo.camion_ciguena.pk %}">{{ vehiculo.camion_ciguena.patente }}</a>
+                        {% else %}Sin asignar{% endif %}
+                    </dd>
+                </dl>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <h5 class="fw-bold mb-3"><i class="bi bi-clock-history text-primary me-2"></i>Historial</h5>
+                {% for h in historial %}
+                <div class="small mb-3 pb-2 border-bottom">
+                    <div class="fw-semibold">{{ h.get_estado_anterior_display|default:"Ingreso" }} &rarr; {{ h.get_estado_nuevo_display }}</div>
+                    {% if h.nota %}<div class="text-secondary">{{ h.nota }}</div>{% endif %}
+                    <div class="text-muted">{{ h.fecha|date:"d/m/Y H:i" }}{% if h.usuario %} · {{ h.usuario.username }}{% endif %}</div>
+                </div>
+                {% empty %}<p class="text-muted small mb-0">Sin movimientos.</p>{% endfor %}
+            </div>
+        </div>
+
+        <!-- Fotos -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                <h5 class="fw-bold mb-3"><i class="bi bi-camera text-primary me-2"></i>Agregar fotos del chequeo</h5>
+                <form method="post" action="{% url 'subir_foto' vehiculo.pk %}" enctype="multipart/form-data" class="row g-3">
+                    {% csrf_token %}
+                    <div class="col-md-4">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Tipo</label>
+                        <select name="tipo" class="form-select">
+                            {% for clave, etiqueta in tipos_foto %}<option value="{{ clave }}">{{ etiqueta }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Observación (opcional)</label>
+                        <input type="text" name="descripcion" maxlength="160" class="form-control" placeholder="Ej: Rayón en puerta derecha">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Fotos (JPG, PNG o WEBP · máx. 2 MB c/u)</label>
+                        <input type="file" name="imagenes" accept="image/jpeg,image/png,image/webp" multiple required class="form-control">
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-rodamar"><i class="bi bi-upload me-1"></i> Guardar fotos</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <h5 class="fw-bold mb-3">Fotos registradas <span class="badge bg-light text-dark border">{{ fotos|length }}</span></h5>
+                {% if fotos %}
+                <div class="row g-3">
+                    {% for f in fotos %}
+                    <div class="col-6 col-md-4">
+                        <div class="border rounded-3 overflow-hidden h-100 bg-white">
+                            <a href="#" class="d-block ver-foto" data-bs-toggle="modal" data-bs-target="#modalFoto"
+                               data-src="{% url 'ver_foto' f.pk %}"
+                               data-titulo="{{ f.get_tipo_display }}{% if f.descripcion %} — {{ f.descripcion }}{% endif %}"
+                               data-meta="{{ f.fecha|date:'d/m/Y H:i' }}{% if f.usuario %} · {{ f.usuario.username }}{% endif %}">
+                                <img src="{% url 'ver_foto' f.pk %}" alt="{{ f.get_tipo_display }}" loading="lazy"
+                                     style="width:100%; height:150px; object-fit:cover;">
+                            </a>
+                            <div class="p-2 small">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ f.get_tipo_display }}</span>
+                                <div class="text-secondary mt-1">{{ f.descripcion|default:"Sin observación" }}</div>
+                                <div class="text-muted">{{ f.fecha|date:"d/m/Y H:i" }}</div>
+                                <form method="post" action="{% url 'eliminar_foto' f.pk %}" onsubmit="return confirm('¿Eliminar esta foto?');" class="mt-1">
+                                    {% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-trash"></i> Eliminar</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-image fs-1 d-block mb-2"></i>
+                    Aún no hay fotos de este vehículo.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Visor de foto -->
+<div class="modal fade" id="modalFoto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title fw-bold" id="fotoTitulo"></h5>
+                    <small class="text-muted" id="fotoMeta"></small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center bg-dark rounded-bottom-4">
+                <img id="fotoGrande" src="" alt="Foto del vehículo" class="img-fluid" style="max-height:75vh;">
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.querySelectorAll('.ver-foto').forEach(function (enlace) {
+        enlace.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('fotoGrande').src = enlace.dataset.src;
+            document.getElementById('fotoTitulo').textContent = enlace.dataset.titulo;
+            document.getElementById('fotoMeta').textContent = enlace.dataset.meta;
+        });
+    });
+</script>
+{% endblock %}
