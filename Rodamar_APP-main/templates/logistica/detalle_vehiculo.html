@@ -68,8 +68,16 @@
                         <input type="text" name="descripcion" maxlength="160" class="form-control" placeholder="Ej: Rayón en puerta derecha">
                     </div>
                     <div class="col-12">
-                        <label class="form-label small fw-bold text-muted text-uppercase">Fotos (JPG, PNG o WEBP · máx. 2 MB c/u)</label>
-                        <input type="file" name="imagenes" accept="image/jpeg,image/png,image/webp" multiple required class="form-control">
+                        <label class="form-label small fw-bold text-muted text-uppercase">Fotos (se reducen automáticamente al subir)</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <label class="btn btn-outline-primary mb-0"><i class="bi bi-camera-fill me-1"></i> Tomar foto
+                                <input type="file" name="imagenes" id="fotoCamara" accept="image/*" capture="environment" hidden>
+                            </label>
+                            <label class="btn btn-outline-secondary mb-0"><i class="bi bi-images me-1"></i> Elegir de la galería
+                                <input type="file" name="imagenes" id="fotoGaleria" accept="image/jpeg,image/png,image/webp" multiple hidden>
+                            </label>
+                        </div>
+                        <div id="fotoResumen" class="small text-muted mt-2">Ninguna foto seleccionada.</div>
                     </div>
                     <div class="col-12 text-end">
                         <button type="submit" class="btn btn-rodamar"><i class="bi bi-upload me-1"></i> Guardar fotos</button>
@@ -132,6 +140,48 @@
         </div>
     </div>
 </div>
+<script>
+(function () {
+    var MAX = 1600;
+    var resumen = document.getElementById('fotoResumen');
+    function reducir(file) {
+        return new Promise(function (ok) {
+            if (!/^image\//.test(file.type)) { return ok(file); }
+            var img = new Image(), url = URL.createObjectURL(file);
+            img.onload = function () {
+                var k = Math.min(1, MAX / Math.max(img.width, img.height));
+                var c = document.createElement('canvas');
+                c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+                c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                c.toBlob(function (b) {
+                    URL.revokeObjectURL(url);
+                    ok(b ? new File([b], file.name.replace(/\.\w+$/, '') + '.jpg', {type: 'image/jpeg'}) : file);
+                }, 'image/jpeg', 0.8);
+            };
+            img.onerror = function () { URL.revokeObjectURL(url); ok(file); };
+            img.src = url;
+        });
+    }
+    ['fotoCamara', 'fotoGaleria'].forEach(function (id) {
+        var inp = document.getElementById(id);
+        if (!inp) { return; }
+        inp.addEventListener('change', function () {
+            Promise.all(Array.from(inp.files).map(reducir)).then(function (lista) {
+                var dt = new DataTransfer();
+                lista.forEach(function (f) { dt.items.add(f); });
+                inp.files = dt.files;
+                var n = document.getElementById('fotoCamara').files.length + document.getElementById('fotoGaleria').files.length;
+                resumen.textContent = n ? n + ' foto(s) lista(s) para guardar.' : 'Ninguna foto seleccionada.';
+            });
+        });
+    });
+    var form = document.getElementById('fotoCamara').form;
+    form.addEventListener('submit', function (e) {
+        var n = document.getElementById('fotoCamara').files.length + document.getElementById('fotoGaleria').files.length;
+        if (!n) { e.preventDefault(); resumen.textContent = 'Selecciona o toma al menos una foto.'; }
+    });
+})();
+</script>
 <script>
     document.querySelectorAll('.ver-foto').forEach(function (enlace) {
         enlace.addEventListener('click', function (e) {
