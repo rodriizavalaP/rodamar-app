@@ -2,6 +2,8 @@ import django.core.validators
 import django.db.models.deletion
 from django.db import migrations, models
 
+from ._seguro import AddFieldSeguro
+
 
 class Migration(migrations.Migration):
 
@@ -28,7 +30,7 @@ class Migration(migrations.Migration):
                 'ordering': ['-id'],
             },
         ),
-        migrations.AddField(
+        AddFieldSeguro(
             model_name='vehiculo',
             name='contenedor',
             field=models.ForeignKey(
