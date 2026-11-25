@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Catálogos | Rodamar Logística{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <h2 class="fw-bold text-dark mb-0">Gestión de Buques, Clientes y Camiones</h2>
+            <p class="text-secondary small mb-0">Crear, consultar, modificar y eliminar los catálogos del sistema</p>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i> Volver al panel</a>
+    </div>
+
+    <ul class="nav nav-pills mb-4 gap-2">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#tab-buques"><i class="bi bi-water me-1"></i> Buques ({{ buques|length }})</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-clientes"><i class="bi bi-building me-1"></i> Clientes ({{ clientes|length }})</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#tab-camiones"><i class="bi bi-truck me-1"></i> Camiones ({{ camiones|length }})</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- Buques -->
+        <div class="tab-pane fade show active" id="tab-buques">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Buques</h5>
+                    <button class="btn btn-rodamar" data-bs-toggle="modal" data-bs-target="#modalBuque"><i class="bi bi-plus-lg me-1"></i> Nuevo buque</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted"><tr><th class="ps-4">Nombre</th><th>N° viaje</th><th>Atraque</th><th class="text-end pe-4">Acciones</th></tr></thead>
+                        <tbody>
+                        {% for b in buques %}
+                        <tr>
+                            <td class="ps-4 fw-semibold">{{ b.nombre }}</td>
+                            <td>{{ b.numero_viaje }}</td>
+                            <td>{{ b.fecha_atraque|date:"d/m/Y" }}</td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'editar_buque' b.pk %}" class="btn btn-sm btn-light border" title="Editar"><i class="bi bi-pencil"></i></a>
+                                <form method="post" action="{% url 'eliminar_buque' b.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este buque? También se eliminarán sus vehículos asociados.');">
+                                    {% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}<tr><td colspan="4" class="text-center text-muted py-4">Sin buques registrados.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clientes -->
+        <div class="tab-pane fade" id="tab-clientes">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Clientes</h5>
+                    <button class="btn btn-rodamar" data-bs-toggle="modal" data-bs-target="#modalCliente"><i class="bi bi-plus-lg me-1"></i> Nuevo cliente</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted"><tr><th class="ps-4">Nombre</th><th>RUT / ID</th><th>Teléfono</th><th>Email</th><th class="text-end pe-4">Acciones</th></tr></thead>
+                        <tbody>
+                        {% for c in clientes %}
+                        <tr>
+                            <td class="ps-4 fw-semibold">{{ c.nombre_completo }}</td>
+                            <td class="font-monospace">{{ c.rut_o_id }}</td>
+                            <td>{{ c.telefono|default:"—" }}</td>
+                            <td>{{ c.email|default:"—" }}</td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'editar_cliente' c.pk %}" class="btn btn-sm btn-light border" title="Editar"><i class="bi bi-pencil"></i></a>
+                                <form method="post" action="{% url 'eliminar_cliente' c.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este cliente? También se eliminarán sus vehículos asociados.');">
+                                    {% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Sin clientes registrados.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Camiones -->
+        <div class="tab-pane fade" id="tab-camiones">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">Camiones cigüeña</h5>
+                    <button class="btn btn-rodamar" data-bs-toggle="modal" data-bs-target="#modalCamion"><i class="bi bi-plus-lg me-1"></i> Nuevo camión</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-uppercase text-muted"><tr><th class="ps-4">Patente</th><th>Empresa</th><th>Chofer</th><th>RUT chofer</th><th class="text-end pe-4">Acciones</th></tr></thead>
+                        <tbody>
+                        {% for t in camiones %}
+                        <tr>
+                            <td class="ps-4 fw-semibold font-monospace">{{ t.patente }}</td>
+                            <td>{{ t.empresa_transporte }}</td>
+                            <td>{{ t.nombre_chofer|default:"—" }}</td>
+                            <td>{{ t.rut_chofer|default:"—" }}</td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'editar_camion' t.pk %}" class="btn btn-sm btn-light border" title="Editar"><i class="bi bi-pencil"></i></a>
+                                <form method="post" action="{% url 'eliminar_camion' t.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este camión?');">
+                                    {% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}<tr><td colspan="5" class="text-center text-muted py-4">Sin camiones registrados.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modales de creación -->
+<div class="modal fade" id="modalBuque" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
+    <div class="modal-header p-4"><h5 class="modal-title fw-bold">Nuevo buque</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="post" action="{% url 'registrar_buque' %}">{% csrf_token %}<input type="hidden" name="volver" value="gestion">
+        <div class="modal-body p-4 row g-3">{% for field in form_buque %}<div class="col-12"><label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>{{ field }}</div>{% endfor %}</div>
+        <div class="modal-footer p-3"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-rodamar">Guardar</button></div>
+    </form></div></div></div>
+
+<div class="modal fade" id="modalCliente" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
+    <div class="modal-header p-4"><h5 class="modal-title fw-bold">Nuevo cliente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="post" action="{% url 'registrar_cliente' %}">{% csrf_token %}<input type="hidden" name="volver" value="gestion">
+        <div class="modal-body p-4 row g-3">{% for field in form_cliente %}<div class="col-12"><label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>{{ field }}</div>{% endfor %}</div>
+        <div class="modal-footer p-3"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-rodamar">Guardar</button></div>
+    </form></div></div></div>
+
+<div class="modal fade" id="modalCamion" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow rounded-4">
+    <div class="modal-header p-4"><h5 class="modal-title fw-bold">Nuevo camión cigüeña</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <form method="post" action="{% url 'registrar_camion' %}">{% csrf_token %}<input type="hidden" name="volver" value="gestion">
+        <div class="modal-body p-4 row g-3">{% for field in form_camion %}<div class="col-12"><label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>{{ field }}</div>{% endfor %}</div>
+        <div class="modal-footer p-3"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-rodamar">Guardar</button></div>
+    </form></div></div></div>
+
+<script>
+    document.querySelectorAll('.modal input, .modal select').forEach(el => {
+        if (el.type !== 'hidden') el.classList.add('form-control', 'bg-light');
+    });
+</script>
+{% endblock %}

@@ -27,7 +27,7 @@ def registro_view(request):
 
             login(request, usuario)
             messages.success(request, f"¡Bienvenido, {usuario.username}! Tu cuenta fue creada.")
-            return redirect('dashboard')
+            return redirect('rastreo')
         else:
             messages.error(request, "Revisa los datos ingresados.")
     else:

@@ -15,4 +15,11 @@ urlpatterns = [
     path('panel/eliminar-buque/<int:pk>/', views.eliminar_buque, name='eliminar_buque'),
     path('panel/eliminar-cliente/<int:pk>/', views.eliminar_cliente, name='eliminar_cliente'),
     path('panel/eliminar-camion/<int:pk>/', views.eliminar_camion, name='eliminar_camion'),
+
+    # Catálogos y edición (Read / Update del CRUD)
+    path('gestion/', views.gestion_catalogos, name='gestion'),
+    path('panel/editar-vehiculo/<int:pk>/', views.editar_vehiculo, name='editar_vehiculo'),
+    path('gestion/editar-buque/<int:pk>/', views.editar_buque, name='editar_buque'),
+    path('gestion/editar-cliente/<int:pk>/', views.editar_cliente, name='editar_cliente'),
+    path('gestion/editar-camion/<int:pk>/', views.editar_camion, name='editar_camion'),
 ]
