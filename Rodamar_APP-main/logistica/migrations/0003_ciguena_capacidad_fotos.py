@@ -3,6 +3,8 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 
+from ._seguro import AddFieldSeguro
+
 
 class Migration(migrations.Migration):
 
@@ -12,7 +14,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
+        AddFieldSeguro(
             model_name='camionciguena',
             name='capacidad',
             field=models.PositiveSmallIntegerField(
@@ -21,7 +23,7 @@ class Migration(migrations.Migration):
                 verbose_name='Capacidad (vehículos)',
             ),
         ),
-        migrations.AddField(
+        AddFieldSeguro(
             model_name='historialestado',
             name='camion_ciguena',
             field=models.ForeignKey(
@@ -31,7 +33,7 @@ class Migration(migrations.Migration):
                 to='logistica.camionciguena',
             ),
         ),
-        migrations.AddField(
+        AddFieldSeguro(
             model_name='historialestado',
             name='nota',
             field=models.CharField(blank=True, default='', max_length=160),
