@@ -17,11 +17,11 @@ class AddFieldSeguro(migrations.AddField):
         if campo.column in columnas:
             return
         if campo.remote_field is not None and campo.db_constraint:
-            sin_fk = campo.clone()
-            sin_fk.set_attributes_from_name(self.name)
-            sin_fk.model = modelo
-            sin_fk.db_constraint = False
-            schema_editor.add_field(modelo, sin_fk)
+            campo.db_constraint = False
+            try:
+                schema_editor.add_field(modelo, campo)
+            finally:
+                campo.db_constraint = True
             try:
                 schema_editor.execute(
                     schema_editor._create_fk_sql(modelo, campo, '_fk_%s' % campo.column)
