@@ -5,6 +5,15 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Si no esta instalado mysqlclient (por ejemplo en Vercel), se usa PyMySQL
+# como reemplazo compatible.
+try:
+    import MySQLdb  # noqa: F401
+except ImportError:
+    import pymysql
+    pymysql.version_info = (2, 2, 1, 'final', 0)
+    pymysql.install_as_MySQLdb()
+
 # Carga las variables definidas en el archivo .env (no se sube a git)
 load_dotenv(BASE_DIR / '.env')
 
@@ -41,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -85,6 +95,12 @@ DATABASES = {
     }
 }
 
+# Para MySQL en la nube (TiDB, Aiven, etc.) que exigen conexion cifrada:
+# poner DB_SSL=True en las variables de entorno.
+if os.getenv('DB_SSL', 'False') == 'True':
+    import certifi
+    DATABASES['default']['OPTIONS']['ssl'] = {'ca': certifi.where()}
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -109,6 +125,12 @@ USE_TZ = True
 # Archivos estáticos
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+# Sirve los estaticos directamente desde la app (necesario en Vercel)
+WHITENOISE_USE_FINDERS = True
+
+# Dominios permitidos para formularios con CSRF (ej: https://mi-app.vercel.app)
+CSRF_TRUSTED_ORIGINS = [o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
