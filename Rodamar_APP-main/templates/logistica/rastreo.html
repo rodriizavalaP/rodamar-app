@@ -20,7 +20,7 @@
                     <i class="bi bi-search text-primary"></i>
                 </span>
                 <input type="text" name="codigo" class="form-control border-0 px-2 fs-6" 
-                       placeholder="Ej: ROD-DEMO-001 ó 76.111.111-1 ó Automotriz del Norte" 
+                       placeholder="Ej: ROD-DEMO-001{% if puede_ver_clientes %} ó 76.111.111-1 ó Automotriz del Norte{% endif %}" 
                        value="{{ termino }}" required autofocus>
                 <button class="btn btn-rodamar px-4 fw-bold" type="submit">Consultar</button>
             </div>
@@ -142,8 +142,8 @@
                 </div>
                 <div class="col-6 col-md-3">
                     <span class="text-muted small text-uppercase fw-semibold">Consignatario / Empresa</span>
-                    <p class="fw-bold fs-5 mb-0 text-dark">{{ vehiculo.cliente.nombre_completo|default:"Importador General" }}</p>
-                    <small class="text-muted">RUT: {{ vehiculo.cliente.rut_o_id|default:"S/R" }}</small>
+                    <p class="fw-bold fs-5 mb-0 text-dark">{% if puede_ver_clientes %}{{ vehiculo.cliente.nombre_completo|default:"Importador General" }}{% else %}Reservado{% endif %}</p>
+                    {% if puede_ver_clientes %}<small class="text-muted">RUT: {{ vehiculo.cliente.rut_o_id|default:"S/R" }}</small>{% endif %}
                 </div>
             </div>
         </div>
@@ -169,7 +169,7 @@
                         </h6>
                         <small class="text-muted fw-semibold">{{ h.fecha|date:"d M Y, H:i" }}</small>
                     </div>
-                    <p class="text-secondary small mb-0">{{ h.observaciones|default:"Actualización de estado registrada en patio." }}</p>
+                    <p class="text-secondary small mb-0">Ubicación: {{ h.ubicacion_patio|default:"Patio Muelle" }}{% if h.usuario %} · registrado por {{ h.usuario.username }}{% endif %}</p>
                 </div>
                 {% endfor %}
             </div>

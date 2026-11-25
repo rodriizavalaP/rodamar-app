@@ -151,3 +151,76 @@ class HistorialUbicacionTest(TestCase):
         self.assertEqual(historial.estado_anterior, 'ENCONTRADO')
         self.assertEqual(historial.estado_nuevo, 'ENCONTRADO')
         self.assertEqual(historial.ubicacion_patio, 'B-15')
+
+
+class SeguridadYCrudWebTest(TestCase):
+    def setUp(self):
+        self.operador = User.objects.create_user('op_web', password='clave12345')
+        self.operador.groups.add(Group.objects.get_or_create(name='Operadores')[0])
+        self.cliente_user = User.objects.create_user('cli_web', password='clave12345')
+        self.cliente_user.groups.add(Group.objects.get_or_create(name='Clientes')[0])
+        self.vehiculo = crear_vehiculo_de_prueba()
+
+    def test_cliente_registrado_no_ve_el_panel(self):
+        self.client.login(username='cli_web', password='clave12345')
+        response = self.client.get(reverse('dashboard'))
+        self.assertRedirects(response, reverse('rastreo'))
+
+    def test_cliente_registrado_no_accede_a_gestion_ni_edicion(self):
+        self.client.login(username='cli_web', password='clave12345')
+        self.assertEqual(self.client.get(reverse('gestion')).status_code, 302)
+        self.assertEqual(self.client.get(reverse('editar_vehiculo', args=[self.vehiculo.pk])).status_code, 302)
+
+    def test_rastreo_publico_no_muestra_rut_del_cliente(self):
+        response = self.client.get(reverse('rastreo'), {'chasis': 'TEST123456'})
+        self.assertNotContains(response, '76.111.111-1')
+
+    def test_busqueda_por_rut_no_funciona_para_anonimos(self):
+        response = self.client.get(reverse('rastreo'), {'codigo': '76.111.111-1'})
+        self.assertNotContains(response, 'TEST123456')
+
+    def test_operador_edita_cliente(self):
+        self.client.login(username='op_web', password='clave12345')
+        cliente = self.vehiculo.cliente
+        response = self.client.post(reverse('editar_cliente', args=[cliente.pk]), {
+            'nombre_completo': 'Nombre Nuevo', 'rut_o_id': cliente.rut_o_id,
+            'telefono': '', 'email': '',
+        })
+        self.assertEqual(response.status_code, 302)
+        cliente.refresh_from_db()
+        self.assertEqual(cliente.nombre_completo, 'Nombre Nuevo')
+
+    def test_edicion_invalida_muestra_errores_y_no_guarda(self):
+        self.client.login(username='op_web', password='clave12345')
+        cliente = self.vehiculo.cliente
+        response = self.client.post(reverse('editar_cliente', args=[cliente.pk]), {
+            'nombre_completo': '', 'rut_o_id': cliente.rut_o_id,
+        })
+        self.assertEqual(response.status_code, 200)
+        cliente.refresh_from_db()
+        self.assertEqual(cliente.nombre_completo, 'Automotriz del Norte')
+
+    def test_editar_vehiculo_cambiando_estado_crea_historial(self):
+        self.client.login(username='op_web', password='clave12345')
+        v = self.vehiculo
+        response = self.client.post(reverse('editar_vehiculo', args=[v.pk]), {
+            'chasis': v.chasis, 'marca': 'Toyota', 'modelo': 'Hilux', 'color': 'Rojo',
+            'buque': v.buque_id, 'cliente': v.cliente_id, 'camion_ciguena': '',
+            'estado': 'EN_PROCESO', 'ubicacion_patio': 'C-03',
+        })
+        self.assertEqual(response.status_code, 302)
+        h = HistorialEstado.objects.get(vehiculo=v)
+        self.assertEqual(h.estado_anterior, 'ENCONTRADO')
+        self.assertEqual(h.estado_nuevo, 'EN_PROCESO')
+
+    def test_operador_elimina_buque_desde_gestion(self):
+        self.client.login(username='op_web', password='clave12345')
+        response = self.client.post(reverse('eliminar_buque', args=[self.vehiculo.buque_id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Buque.objects.exists())
+
+    def test_usuario_cliente_no_lee_api_de_clientes(self):
+        from rest_framework.test import APIClient
+        api = APIClient()
+        api.force_authenticate(user=self.cliente_user)
+        self.assertEqual(api.get('/api/clientes/').status_code, 403)
