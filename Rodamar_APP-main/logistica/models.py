@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
 from django.db import models
 
 # Tabla 1: Buque que arriba al puerto
@@ -77,6 +77,15 @@ class Vehiculo(models.Model):
         related_name='vehiculos_cargados'
     )
     
+    # Algunos vehículos llegan dentro de un contenedor (se anota su número)
+    contenedor = models.ForeignKey(
+        'Contenedor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vehiculos'
+    )
+
     fecha_registro = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -153,3 +162,27 @@ class FotoVehiculo(models.Model):
 
     def __str__(self):
         return f"{self.vehiculo.chasis} - {self.get_tipo_display()} ({self.fecha:%d-%m-%Y})"
+
+
+# Tabla 7: Contenedor en el que llegan algunos vehículos
+class Contenedor(models.Model):
+    numero = models.CharField(
+        max_length=11,
+        unique=True,
+        validators=[RegexValidator(
+            r'^[A-Z]{4}\d{7}$',
+            'El número debe tener 4 letras y 7 números (ej: MSKU1234567).'
+        )],
+        verbose_name="N° de contenedor",
+    )
+    sello = models.CharField(max_length=40, blank=True, default='')
+    fecha_apertura = models.DateField(null=True, blank=True, verbose_name="Fecha de apertura")
+    observacion = models.CharField(max_length=160, blank=True, default='')
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = "Contenedor"
+        verbose_name_plural = "Contenedores"
+
+    def __str__(self):
+        return self.numero

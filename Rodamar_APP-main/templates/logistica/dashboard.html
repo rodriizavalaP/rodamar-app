@@ -151,6 +151,7 @@
                         <td>
                             <div class="fw-semibold text-dark">{{ v.marca }} {{ v.modelo }}</div>
                             <small class="text-muted">{{ v.color|default:"Sin color reg." }}</small>
+                            {% if v.contenedor %}<div><span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-box-seam me-1"></i>{{ v.contenedor.numero }}</span></div>{% endif %}
                         </td>
                         <td>
                             <div class="d-flex align-items-center gap-1">

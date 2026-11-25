@@ -100,8 +100,9 @@ Para probar el rol *Cliente*, usa **Registro** en el sitio: esas cuentas no pued
 ## Cigüeña con varios vehículos y fotos de chequeo
 - **Cigüeña:** cada camión tiene una capacidad. En *Clientes y catálogos → Camiones → Carga* se seleccionan varios vehículos que viajan juntos; el sistema respeta los cupos, puede marcarlos «En traslado» y deja cada asignación o retiro en el historial (con usuario y fecha).
 - **Fotos:** en el panel, el botón de la cámara de cada vehículo abre su ficha. Ahí se suben fotos (JPG, PNG o WEBP, máx. 2 MB c/u) con tipo (llegada, chequeo, daño, entrega) y observación; al hacer clic en una foto se abre ampliada. Las fotos solo las ven los operadores.
+- **Contenedores:** si los vehículos llegan dentro de un contenedor, se registra su número (formato ISO: 4 letras y 7 números, ej. `MSKU1234567`), sello y fecha de apertura en *Clientes y catálogos → Contenedores*. Cada vehículo puede indicar su contenedor (al crearlo/editarlo, o desde la página del contenedor) y se ve en el panel y en su ficha. Eliminar un contenedor no borra los vehículos.
 - Las imágenes se guardan en la base de datos, por lo que funcionan igual en local y en la nube.
-- Tras actualizar el código, ejecutar `python manage.py migrate` (migración `0003`).
+- Tras actualizar el código, ejecutar `python manage.py migrate` (migraciones `0003` y `0004`).
 
 ## Seguridad básica
 - `SECRET_KEY` y credenciales de MySQL salen de `.env` (que no se sube a Git, ver `.gitignore`).

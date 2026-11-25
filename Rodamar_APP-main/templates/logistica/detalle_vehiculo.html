@@ -26,6 +26,10 @@
                     <dt class="col-5 text-muted">Ubicación</dt><dd class="col-7">{{ vehiculo.ubicacion_patio|default:"Patio Muelle" }}</dd>
                     <dt class="col-5 text-muted">Buque</dt><dd class="col-7">{{ vehiculo.buque.nombre }} ({{ vehiculo.buque.numero_viaje }})</dd>
                     <dt class="col-5 text-muted">Cliente</dt><dd class="col-7">{{ vehiculo.cliente.nombre_completo }}</dd>
+                    <dt class="col-5 text-muted">Contenedor</dt>
+                    <dd class="col-7">
+                        {% if vehiculo.contenedor %}<a href="{% url 'detalle_contenedor' vehiculo.contenedor.pk %}" class="font-monospace">{{ vehiculo.contenedor.numero }}</a>{% else %}No vino en contenedor{% endif %}
+                    </dd>
                     <dt class="col-5 text-muted">Cigüeña</dt>
                     <dd class="col-7">
                         {% if vehiculo.camion_ciguena %}

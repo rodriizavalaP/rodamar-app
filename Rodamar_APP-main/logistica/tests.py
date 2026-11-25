@@ -327,3 +327,62 @@ class CiguenaYFotosTest(TestCase):
         self.assertEqual(response.status_code, 200)
         response = self.client.get(reverse('detalle_camion', args=[self.camion.pk]))
         self.assertEqual(response.status_code, 200)
+
+
+class ContenedorTest(TestCase):
+    def setUp(self):
+        self.operador = User.objects.create_user('op_cont', password='clave12345')
+        self.operador.groups.add(Group.objects.get_or_create(name='Operadores')[0])
+        self.cliente_user = User.objects.create_user('cli_cont', password='clave12345')
+        self.cliente_user.groups.add(Group.objects.get_or_create(name='Clientes')[0])
+        self.vehiculo = crear_vehiculo_de_prueba()
+
+    def test_registrar_contenedor_normaliza_el_numero(self):
+        from .models import Contenedor
+        self.client.login(username='op_cont', password='clave12345')
+        self.client.post(reverse('registrar_contenedor'), {'numero': 'msku 123456-7', 'sello': 'S-001'})
+        self.assertTrue(Contenedor.objects.filter(numero='MSKU1234567').exists())
+
+    def test_rechaza_numero_con_formato_invalido(self):
+        from .models import Contenedor
+        self.client.login(username='op_cont', password='clave12345')
+        self.client.post(reverse('registrar_contenedor'), {'numero': '12345'})
+        self.assertEqual(Contenedor.objects.count(), 0)
+
+    def test_no_permite_numero_repetido(self):
+        from .models import Contenedor
+        self.client.login(username='op_cont', password='clave12345')
+        self.client.post(reverse('registrar_contenedor'), {'numero': 'MSKU1234567'})
+        self.client.post(reverse('registrar_contenedor'), {'numero': 'MSKU1234567'})
+        self.assertEqual(Contenedor.objects.count(), 1)
+
+    def test_anotar_vehiculos_en_el_contenedor(self):
+        from .models import Contenedor
+        self.client.login(username='op_cont', password='clave12345')
+        cont = Contenedor.objects.create(numero='TGHU7654321')
+        self.client.post(reverse('agregar_a_contenedor', args=[cont.pk]), {'vehiculos': [self.vehiculo.pk]})
+        self.vehiculo.refresh_from_db()
+        self.assertEqual(self.vehiculo.contenedor, cont)
+        self.assertTrue(HistorialEstado.objects.filter(vehiculo=self.vehiculo, nota__contains='TGHU7654321').exists())
+
+    def test_eliminar_contenedor_no_borra_los_vehiculos(self):
+        from .models import Contenedor
+        self.client.login(username='op_cont', password='clave12345')
+        cont = Contenedor.objects.create(numero='TGHU7654321')
+        self.vehiculo.contenedor = cont
+        self.vehiculo.save()
+        self.client.post(reverse('eliminar_contenedor', args=[cont.pk]))
+        self.vehiculo.refresh_from_db()
+        self.assertIsNone(self.vehiculo.contenedor)
+
+    def test_cliente_no_accede_a_contenedores(self):
+        self.client.login(username='cli_cont', password='clave12345')
+        self.assertEqual(self.client.get(reverse('gestion')).status_code, 302)
+
+    def test_paginas_de_contenedor_cargan(self):
+        from .models import Contenedor
+        self.client.login(username='op_cont', password='clave12345')
+        cont = Contenedor.objects.create(numero='TGHU7654321')
+        self.assertEqual(self.client.get(reverse('gestion')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('detalle_contenedor', args=[cont.pk])).status_code, 200)
+

@@ -33,4 +33,12 @@ urlpatterns = [
     path('panel/vehiculo/<int:pk>/subir-foto/', views.subir_foto, name='subir_foto'),
     path('panel/foto/<int:pk>/', views.ver_foto, name='ver_foto'),
     path('panel/foto/<int:pk>/eliminar/', views.eliminar_foto, name='eliminar_foto'),
+
+    # Contenedores
+    path('gestion/nuevo-contenedor/', views.registrar_contenedor, name='registrar_contenedor'),
+    path('gestion/editar-contenedor/<int:pk>/', views.editar_contenedor, name='editar_contenedor'),
+    path('gestion/eliminar-contenedor/<int:pk>/', views.eliminar_contenedor, name='eliminar_contenedor'),
+    path('gestion/contenedor/<int:pk>/', views.detalle_contenedor, name='detalle_contenedor'),
+    path('gestion/contenedor/<int:pk>/agregar/', views.agregar_vehiculos_a_contenedor, name='agregar_a_contenedor'),
+    path('gestion/contenedor/<int:pk>/quitar/<int:vehiculo_pk>/', views.quitar_vehiculo_de_contenedor, name='quitar_de_contenedor'),
 ]

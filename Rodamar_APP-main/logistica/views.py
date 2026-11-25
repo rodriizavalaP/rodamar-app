@@ -2,9 +2,9 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q
-from .models import Vehiculo, Buque, Cliente, CamionCiguena, HistorialEstado, FotoVehiculo
-from .forms import VehiculoForm, BuqueForm, ClienteForm, CamionCiguenaForm
+from django.db.models import Count, Q
+from .models import Vehiculo, Buque, Cliente, CamionCiguena, HistorialEstado, FotoVehiculo, Contenedor
+from .forms import VehiculoForm, BuqueForm, ClienteForm, CamionCiguenaForm, ContenedorForm
 
 
 def es_operador(user):
@@ -297,6 +297,8 @@ def gestion_catalogos(request):
         'form_buque': BuqueForm(),
         'form_cliente': ClienteForm(),
         'form_camion': CamionCiguenaForm(),
+        'contenedores': Contenedor.objects.all().annotate(total=Count('vehiculos')),
+        'form_contenedor': ContenedorForm(),
     })
 
 
@@ -527,3 +529,85 @@ def eliminar_foto(request, pk):
         foto.delete()
         messages.success(request, "Foto eliminada.")
     return redirect('detalle_vehiculo', pk=vehiculo_pk)
+
+
+# --------------------------------------------------------------------------
+# Contenedores: vehículos que llegan dentro de un contenedor
+# --------------------------------------------------------------------------
+
+@solo_operadores
+def registrar_contenedor(request):
+    if request.method == 'POST':
+        form = ContenedorForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Contenedor registrado exitosamente.")
+        else:
+            messages.error(request, f"No se pudo registrar el contenedor. {_errores_de(form)}")
+    return redirect(_volver(request, 'gestion'))
+
+
+@solo_operadores
+def editar_contenedor(request, pk):
+    return _editar(request, Contenedor, ContenedorForm, pk, 'Contenedor', 'gestion')
+
+
+@solo_operadores
+def eliminar_contenedor(request, pk):
+    if request.method == 'POST':
+        contenedor = get_object_or_404(Contenedor, pk=pk)
+        numero = contenedor.numero
+        cantidad = contenedor.vehiculos.count()
+        contenedor.delete()  # los vehículos NO se borran: solo quedan sin contenedor
+        if cantidad:
+            messages.warning(request, f"Contenedor {numero} eliminado. {cantidad} vehículo(s) quedaron sin contenedor.")
+        else:
+            messages.success(request, f"Contenedor {numero} eliminado.")
+    return redirect('gestion')
+
+
+@solo_operadores
+def detalle_contenedor(request, pk):
+    contenedor = get_object_or_404(Contenedor, pk=pk)
+    return render(request, 'logistica/detalle_contenedor.html', {
+        'contenedor': contenedor,
+        'vehiculos': contenedor.vehiculos.select_related('buque', 'cliente').order_by('chasis'),
+        'disponibles': Vehiculo.objects.filter(contenedor__isnull=True).select_related(
+            'buque', 'cliente').order_by('chasis'),
+    })
+
+
+@solo_operadores
+def agregar_vehiculos_a_contenedor(request, pk):
+    """Anota que los vehículos seleccionados venían dentro de este contenedor."""
+    contenedor = get_object_or_404(Contenedor, pk=pk)
+    if request.method == 'POST':
+        vehiculos = list(Vehiculo.objects.filter(
+            pk__in=request.POST.getlist('vehiculos'), contenedor__isnull=True))
+        if not vehiculos:
+            messages.error(request, "Selecciona al menos un vehículo.")
+        else:
+            for v in vehiculos:
+                v.contenedor = contenedor
+                v.save()
+                HistorialEstado.objects.create(
+                    vehiculo=v,
+                    estado_anterior=v.estado,
+                    estado_nuevo=v.estado,
+                    ubicacion_patio=v.ubicacion_patio,
+                    usuario=request.user,
+                    nota=f"Descargado del contenedor {contenedor.numero}",
+                )
+            messages.success(request, f"{len(vehiculos)} vehículo(s) anotado(s) en el contenedor {contenedor.numero}.")
+    return redirect('detalle_contenedor', pk=contenedor.pk)
+
+
+@solo_operadores
+def quitar_vehiculo_de_contenedor(request, pk, vehiculo_pk):
+    contenedor = get_object_or_404(Contenedor, pk=pk)
+    if request.method == 'POST':
+        vehiculo = get_object_or_404(Vehiculo, pk=vehiculo_pk, contenedor=contenedor)
+        vehiculo.contenedor = None
+        vehiculo.save()
+        messages.success(request, f"{vehiculo.chasis} ya no figura en el contenedor {contenedor.numero}.")
+    return redirect('detalle_contenedor', pk=contenedor.pk)
