@@ -30,6 +30,7 @@ urlpatterns = [
 
     # Ficha del vehículo y fotos de chequeo
     path('panel/vehiculo/<int:pk>/', views.detalle_vehiculo, name='detalle_vehiculo'),
+    path('panel/vehiculo/<int:pk>/ciguena/', views.asignar_ciguena_vehiculo, name='asignar_ciguena_vehiculo'),
     path('panel/vehiculo/<int:pk>/subir-foto/', views.subir_foto, name='subir_foto'),
     path('panel/foto/<int:pk>/', views.ver_foto, name='ver_foto'),
     path('panel/foto/<int:pk>/eliminar/', views.eliminar_foto, name='eliminar_foto'),
