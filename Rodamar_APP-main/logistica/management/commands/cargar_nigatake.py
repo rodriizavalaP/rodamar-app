@@ -83,10 +83,12 @@ class Command(BaseCommand):
     help = "Carga cliente Nigatake, nave, 20 contenedores y 60 camiones del BL 6509749280."
 
     def handle(self, *args, **options):
-        cliente, _ = Cliente.objects.get_or_create(
-            rut_o_id='NIGATAKE-BO',
-            defaults={'nombre_completo': 'Import Export Nigatake S.R.L.'},
-        )
+        # Usa el cliente Nigatake si ya existe; si no, lo crea
+        cliente = Cliente.objects.filter(nombre_completo__icontains='nigatake').first()
+        if cliente is None:
+            cliente = Cliente.objects.create(
+                rut_o_id='NIGATAKE-BO', nombre_completo='Import Export Nigatake S.R.L.',
+            )
         buque, _ = Buque.objects.get_or_create(
             nombre='MOLLY SCHULTE', numero_viaje='150S',
             defaults={'fecha_atraque': date(2026, 11, 19)},
