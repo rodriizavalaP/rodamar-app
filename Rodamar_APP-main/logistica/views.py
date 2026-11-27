@@ -29,6 +29,7 @@ def rastreo_vehiculo(request):
     vehiculos_empresa = None
     cliente_encontrado = None
     historial = None
+    fotos = None
     mensaje_error = None
 
     puede_ver_clientes = es_operador(request.user)
@@ -39,6 +40,7 @@ def rastreo_vehiculo(request):
 
         if vehiculo:
             historial = vehiculo.historial.all()
+            fotos = vehiculo.fotos.defer('imagen')
         elif puede_ver_clientes:
             # 2. Solo operadores: buscar por RUT o nombre de cliente / flota
             clientes = Cliente.objects.filter(
@@ -58,6 +60,7 @@ def rastreo_vehiculo(request):
     return render(request, 'logistica/rastreo.html', {
         'vehiculo': vehiculo,
         'historial': historial,
+        'fotos': fotos,
         'vehiculos_empresa': vehiculos_empresa,
         'cliente_encontrado': cliente_encontrado,
         'termino': query,
@@ -509,6 +512,15 @@ def subir_foto(request, pk):
         if rechazadas:
             messages.error(request, "No se guardaron: " + ", ".join(rechazadas))
     return redirect('detalle_vehiculo', pk=vehiculo.pk)
+
+
+def ver_foto_publica(request, chasis, pk):
+    """Foto de chequeo visible para quien consulta el chasis exacto del vehículo."""
+    foto = get_object_or_404(FotoVehiculo, pk=pk, vehiculo__chasis__iexact=chasis)
+    respuesta = HttpResponse(bytes(foto.imagen), content_type=foto.content_type)
+    respuesta['Cache-Control'] = 'private, max-age=3600'
+    respuesta['X-Content-Type-Options'] = 'nosniff'
+    return respuesta
 
 
 @solo_operadores

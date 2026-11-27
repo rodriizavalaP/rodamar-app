@@ -149,6 +149,43 @@
         </div>
     </div>
 
+
+    <!-- Fotos del chequeo -->
+    {% if fotos %}
+    <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+        <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-camera me-2 text-primary"></i> Fotos del chequeo <span class="badge bg-light text-dark border">{{ fotos|length }}</span></h5>
+        <div class="row g-3">
+            {% for f in fotos %}
+            <div class="col-6 col-md-3">
+                <a href="#" class="d-block ver-foto-pub" data-bs-toggle="modal" data-bs-target="#modalFotoPub"
+                   data-src="{% url 'ver_foto_publica' vehiculo.chasis f.pk %}" data-titulo="{{ f.get_tipo_display }} · {{ f.fecha|date:'d M Y, H:i' }}">
+                    <img src="{% url 'ver_foto_publica' vehiculo.chasis f.pk %}" alt="{{ f.get_tipo_display }}" loading="lazy"
+                         class="img-fluid rounded-3 border" style="aspect-ratio:4/3;object-fit:cover;width:100%;cursor:zoom-in;">
+                </a>
+                <div class="small text-muted mt-1">{{ f.get_tipo_display }}{% if f.descripcion %} · {{ f.descripcion }}{% endif %}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="modal fade" id="modalFotoPub" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header"><h6 class="modal-title" id="modalFotoPubTitulo"></h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+                <div class="modal-body text-center"><img id="modalFotoPubImg" src="" alt="Foto" class="img-fluid"></div>
+            </div>
+        </div>
+    </div>
+    <script>
+    document.querySelectorAll('.ver-foto-pub').forEach(function (a) {
+        a.addEventListener('click', function () {
+            document.getElementById('modalFotoPubImg').src = a.dataset.src;
+            document.getElementById('modalFotoPubTitulo').textContent = a.dataset.titulo;
+        });
+    });
+    </script>
+    {% endif %}
+
     <!-- Línea de Tiempo del Vehículo -->
     <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
         <h5 class="fw-bold mb-4 text-dark">
