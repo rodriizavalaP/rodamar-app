@@ -35,6 +35,9 @@ class CamionCiguena(models.Model):
     empresa_transporte = models.CharField(max_length=100)
     nombre_chofer = models.CharField(max_length=120, blank=True, null=True)
     rut_chofer = models.CharField(max_length=20, blank=True, null=True)
+    # Datos del camión (marca, modelo y año)
+    modelo_camion = models.CharField(max_length=60, blank=True, default='', verbose_name="Marca y modelo del camión")
+    anio_camion = models.PositiveSmallIntegerField(blank=True, null=True, verbose_name="Año del camión")
     # Cuántos vehículos puede llevar en un mismo viaje
     capacidad = models.PositiveSmallIntegerField(
         default=8,
@@ -43,7 +46,8 @@ class CamionCiguena(models.Model):
     )
 
     def __str__(self):
-        return f"Cigueña: {self.patente} ({self.empresa_transporte})"
+        chofer = f" · Chofer: {self.nombre_chofer}" if self.nombre_chofer else ""
+        return f"{self.patente} · {self.empresa_transporte}{chofer}"
 
     @property
     def cupos_libres(self):
@@ -65,7 +69,7 @@ class Vehiculo(models.Model):
     modelo = models.CharField(max_length=60)
     color = models.CharField(max_length=40, blank=True, null=True)
     ubicacion_patio = models.CharField(max_length=60, blank=True, null=True)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='ENCONTRADO')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='NO_ENCONTRADO')
     
     # Relaciones del vehículo
     buque = models.ForeignKey(Buque, on_delete=models.CASCADE, related_name='vehiculos')

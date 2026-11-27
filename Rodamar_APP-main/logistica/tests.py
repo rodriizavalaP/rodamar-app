@@ -417,3 +417,30 @@ class ContenedorTest(TestCase):
         self.assertEqual(self.client.get(reverse('gestion')).status_code, 200)
         self.assertEqual(self.client.get(reverse('detalle_contenedor', args=[cont.pk])).status_code, 200)
 
+
+
+class ListaCiguenasTest(TestCase):
+    def setUp(self):
+        self.operador = User.objects.create_user('op_cig', password='clave12345')
+        self.operador.groups.add(Group.objects.get_or_create(name='Operadores')[0])
+        self.cliente_user = User.objects.create_user('cli_cig', password='clave12345')
+        self.cliente_user.groups.add(Group.objects.get_or_create(name='Clientes')[0])
+        self.camion = CamionCiguena.objects.create(
+            patente='ZZ-11', empresa_transporte='Trans Sur', nombre_chofer='Pedro Rojas', capacidad=6)
+
+    def test_lista_muestra_chofer_y_solo_operadores(self):
+        self.client.login(username='op_cig', password='clave12345')
+        r = self.client.get(reverse('ciguenas'))
+        self.assertContains(r, 'Pedro Rojas')
+        self.client.logout()
+        self.client.login(username='cli_cig', password='clave12345')
+        self.assertEqual(self.client.get(reverse('ciguenas')).status_code, 302)
+
+    def test_eliminar_desde_la_lista_vuelve_a_la_lista(self):
+        self.client.login(username='op_cig', password='clave12345')
+        r = self.client.post(reverse('eliminar_camion', args=[self.camion.pk]), {'volver': 'ciguenas'})
+        self.assertRedirects(r, reverse('ciguenas'))
+        self.assertFalse(CamionCiguena.objects.filter(pk=self.camion.pk).exists())
+
+    def test_texto_de_seleccion_incluye_patente_empresa_y_chofer(self):
+        self.assertEqual(str(self.camion), 'ZZ-11 · Trans Sur · Chofer: Pedro Rojas')

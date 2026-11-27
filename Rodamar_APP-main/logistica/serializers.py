@@ -18,7 +18,7 @@ class ClienteSerializer(serializers.ModelSerializer):
 class CamionCiguenaSerializer(serializers.ModelSerializer):
     class Meta:
         model = CamionCiguena
-        fields = ['id', 'patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer']
+        fields = ['id', 'patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer', 'modelo_camion', 'anio_camion']
 
 
 class HistorialEstadoSerializer(serializers.ModelSerializer):
