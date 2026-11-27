@@ -28,12 +28,14 @@ class ClienteForm(forms.ModelForm):
 class CamionCiguenaForm(forms.ModelForm):
     class Meta:
         model = CamionCiguena
-        fields = ['patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer', 'capacidad']
+        fields = ['patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer', 'modelo_camion', 'anio_camion', 'capacidad']
         widgets = {
             'patente': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: ABCD-12'}),
             'empresa_transporte': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Transportes del Pacífico'}),
             'nombre_chofer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Juan Pérez'}),
             'rut_chofer': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 15.432.198-7'}),
+            'modelo_camion': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej: Volvo FH'}),
+            'anio_camion': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ej: 2011'}),
             'capacidad': forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'max': 20}),
         }
 

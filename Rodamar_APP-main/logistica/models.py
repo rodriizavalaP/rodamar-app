@@ -35,6 +35,9 @@ class CamionCiguena(models.Model):
     empresa_transporte = models.CharField(max_length=100)
     nombre_chofer = models.CharField(max_length=120, blank=True, null=True)
     rut_chofer = models.CharField(max_length=20, blank=True, null=True)
+    # Datos del camión (marca, modelo y año)
+    modelo_camion = models.CharField(max_length=60, blank=True, default='', verbose_name="Marca y modelo del camión")
+    anio_camion = models.PositiveSmallIntegerField(blank=True, null=True, verbose_name="Año del camión")
     # Cuántos vehículos puede llevar en un mismo viaje
     capacidad = models.PositiveSmallIntegerField(
         default=8,

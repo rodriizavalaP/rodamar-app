@@ -18,7 +18,7 @@ class ClienteAdmin(admin.ModelAdmin):
 
 @admin.register(CamionCiguena)
 class CamionCiguenaAdmin(admin.ModelAdmin):
-    list_display = ('patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer', 'capacidad')
+    list_display = ('patente', 'empresa_transporte', 'nombre_chofer', 'rut_chofer', 'modelo_camion', 'anio_camion', 'capacidad')
     search_fields = ('patente', 'empresa_transporte', 'nombre_chofer')
     list_filter = ('empresa_transporte',)
 
