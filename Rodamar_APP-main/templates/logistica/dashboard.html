@@ -180,11 +180,18 @@
                         </td>
                         {% if es_operador %}
                         <td>
-                            <form method="post" action="{% url 'actualizar_estado' v.pk %}" class="d-flex gap-1">
+                            <form method="post" action="{% url 'actualizar_estado' v.pk %}" class="d-flex gap-1 flex-wrap">
                                 {% csrf_token %}
-                                <select name="nuevo_estado" class="form-select form-select-sm bg-light" style="width: 140px;">
+                                <select name="nuevo_estado" class="form-select form-select-sm bg-light select-estado" style="width: 140px;">
                                     {% for clave, etiqueta in estados %}
                                         <option value="{{ clave }}" {% if v.estado == clave %}selected{% endif %}>{{ clave }}</option>
+                                    {% endfor %}
+                                </select>
+                                <select name="traslado" class="form-select form-select-sm bg-light select-traslado" style="width: 170px; {% if v.estado != 'EN_CAMINO' %}display:none;{% endif %}">
+                                    <option value="">¿Cómo sale?</option>
+                                    <option value="propio" {% if v.estado == 'EN_CAMINO' and not v.camion_ciguena %}selected{% endif %}>Por sus propios medios</option>
+                                    {% for c in ciguenas %}
+                                        <option value="{{ c.pk }}" {% if v.camion_ciguena_id == c.pk %}selected{% endif %}>Cigüeña {{ c.patente }}</option>
                                     {% endfor %}
                                 </select>
                                 <button type="submit" class="btn btn-sm btn-primary" title="Actualizar Fase">
@@ -318,4 +325,12 @@
     });
 </script>
 {% endif %}
+<script>
+document.querySelectorAll('.select-estado').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+        var t = sel.form.querySelector('.select-traslado');
+        t.style.display = sel.value === 'EN_CAMINO' ? '' : 'none';
+    });
+});
+</script>
 {% endblock %}

@@ -257,6 +257,18 @@ class CiguenaYFotosTest(TestCase):
         self.assertEqual(self.camion.vehiculos_cargados.count(), 2)
         self.assertEqual(self.camion.movimientos.count(), 2)
 
+    def test_traslado_propio_o_en_ciguena(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        url = reverse('actualizar_estado', args=[self.v1.pk])
+        self.client.post(url, {'nuevo_estado': 'EN_CAMINO', 'traslado': str(self.camion.pk)})
+        self.v1.refresh_from_db()
+        self.assertEqual(self.v1.estado, 'EN_CAMINO')
+        self.assertEqual(self.v1.camion_ciguena, self.camion)
+        self.client.post(url, {'nuevo_estado': 'EN_CAMINO', 'traslado': 'propio'})
+        self.v1.refresh_from_db()
+        self.assertIsNone(self.v1.camion_ciguena)
+        self.assertTrue(self.v1.historial.filter(nota='Sale por sus propios medios').exists())
+
     def test_no_se_puede_superar_la_capacidad(self):
         self.client.login(username='op_fotos', password='clave12345')
         v3 = Vehiculo.objects.create(
