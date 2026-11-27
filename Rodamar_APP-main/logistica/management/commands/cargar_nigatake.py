@@ -97,7 +97,7 @@ class Command(BaseCommand):
         for numero, chasis, color in CARGA:
             contenedor, _ = Contenedor.objects.get_or_create(
                 numero=numero,
-                defaults={'fecha_apertura': date(2026, 11, 19), 'observacion': OBSERVACION},
+                defaults={'fecha_apertura': date(2026, 11, 26), 'observacion': OBSERVACION},
             )
             _, creado = Vehiculo.objects.get_or_create(
                 chasis=chasis,

@@ -26,7 +26,7 @@ class Command(BaseCommand):
         for numero in NUMEROS:
             _, nuevo = Contenedor.objects.get_or_create(
                 numero=numero,
-                defaults={'fecha_apertura': date(2026, 11, 19), 'observacion': OBSERVACION},
+                defaults={'fecha_apertura': date(2026, 11, 26), 'observacion': OBSERVACION},
             )
             creados += nuevo
         self.stdout.write(self.style.SUCCESS(
