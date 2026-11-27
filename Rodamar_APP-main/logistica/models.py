@@ -68,7 +68,7 @@ class Vehiculo(models.Model):
     modelo = models.CharField(max_length=60)
     color = models.CharField(max_length=40, blank=True, null=True)
     ubicacion_patio = models.CharField(max_length=60, blank=True, null=True)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='ENCONTRADO')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='NO_ENCONTRADO')
     
     # Relaciones del vehículo
     buque = models.ForeignKey(Buque, on_delete=models.CASCADE, related_name='vehiculos')
