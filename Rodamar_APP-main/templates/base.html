@@ -4,6 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        // Aplica el tema guardado (o el del sistema) antes de pintar la página
+        (function () {
+            var t = null;
+            try { t = localStorage.getItem('rodamar-tema'); } catch (e) {}
+            if (!t) { t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light'; }
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
     <title>{% block title %}Rodamar Logística{% endblock %}</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -139,6 +148,28 @@
         .footer-link:hover {
             color: #38BDF8;
         }
+
+        /* ===== Modo oscuro ===== */
+        [data-bs-theme="dark"] {
+            --rodamar-bg: #0B1220;
+            --rodamar-text: #E2E8F0;
+            --rodamar-border: #263247;
+        }
+        [data-bs-theme="dark"] .navbar-rodamar { background-color: rgba(15, 23, 42, 0.95); }
+        [data-bs-theme="dark"] .navbar-brand { color: #F8FAFC !important; }
+        [data-bs-theme="dark"] .nav-link { color: #CBD5E1 !important; }
+        [data-bs-theme="dark"] .nav-link:hover, [data-bs-theme="dark"] .nav-link.active { color: #7DD3FC !important; background-color: #1E293B; }
+        [data-bs-theme="dark"] .btn-rodamar-outline { background: #111A2C; color: #E2E8F0; }
+        [data-bs-theme="dark"] .btn-rodamar-outline:hover { background: #1E293B; color: #7DD3FC; border-color: #38BDF8; }
+        [data-bs-theme="dark"] .bg-white { background-color: #111A2C !important; }
+        [data-bs-theme="dark"] .bg-light { background-color: #1B2536 !important; color: #E2E8F0; }
+        [data-bs-theme="dark"] .text-dark { color: #E2E8F0 !important; }
+        [data-bs-theme="dark"] .text-primary { color: #60A5FA !important; }
+        [data-bs-theme="dark"] .table { --bs-table-bg: transparent; }
+        [data-bs-theme="dark"] .tracking-card, [data-bs-theme="dark"] .feature-card { background: #111A2C !important; border-color: #263247 !important; }
+        [data-bs-theme="dark"] .feature-icon { background: #1E293B !important; }
+        [data-bs-theme="dark"] .dropdown-menu { background: #111A2C; }
+        .btn-tema { width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -172,6 +203,9 @@
                 </ul>
 
                 <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="botonTema" class="btn btn-rodamar-outline btn-tema" title="Cambiar entre modo claro y oscuro" aria-label="Cambiar tema">
+                        <i class="bi bi-moon-stars-fill" id="iconoTema"></i>
+                    </button>
                     {% if user.is_authenticated %}
                         <div class="dropdown">
                             <button class="btn btn-rodamar-outline dropdown-toggle d-flex align-items-center gap-2 py-2" type="button" data-bs-toggle="dropdown">
@@ -251,5 +285,24 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     {% block extra_js %}{% endblock %}
+<script>
+(function () {
+    var raiz = document.documentElement, icono = document.getElementById('iconoTema');
+    function pintar() {
+        var oscuro = raiz.getAttribute('data-bs-theme') === 'dark';
+        if (icono) { icono.className = oscuro ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill'; }
+    }
+    pintar();
+    var boton = document.getElementById('botonTema');
+    if (boton) {
+        boton.addEventListener('click', function () {
+            var nuevo = raiz.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+            raiz.setAttribute('data-bs-theme', nuevo);
+            try { localStorage.setItem('rodamar-tema', nuevo); } catch (e) {}
+            pintar();
+        });
+    }
+})();
+</script>
 </body>
 </html>
