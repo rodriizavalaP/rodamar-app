@@ -137,7 +137,7 @@ def _errores_de(form):
 def _volver(request, defecto):
     """Destino tras guardar. Solo se aceptan nombres de ruta conocidos."""
     destino = request.POST.get('volver', defecto)
-    return destino if destino in ('dashboard', 'gestion') else defecto
+    return destino if destino in ('dashboard', 'gestion', 'ciguenas') else defecto
 
 
 # Guardar nuevo buque desde el modal
@@ -357,7 +357,7 @@ def editar_cliente(request, pk):
 
 @solo_operadores
 def editar_camion(request, pk):
-    return _editar(request, CamionCiguena, CamionCiguenaForm, pk, 'Camión cigüeña', 'gestion')
+    return _editar(request, CamionCiguena, CamionCiguenaForm, pk, 'Camión cigüeña', 'ciguenas')
 
 
 @solo_operadores
@@ -675,3 +675,13 @@ def quitar_vehiculo_de_contenedor(request, pk, vehiculo_pk):
         vehiculo.save()
         messages.success(request, f"{vehiculo.chasis} ya no figura en el contenedor {contenedor.numero}.")
     return redirect('detalle_contenedor', pk=contenedor.pk)
+
+
+@solo_operadores
+def lista_ciguenas(request):
+    """Todas las cigüeñas (camiones) con su chofer y carga; desde aquí se editan o eliminan."""
+    camiones = CamionCiguena.objects.all().annotate(carga=Count('vehiculos_cargados')).order_by('patente')
+    return render(request, 'logistica/ciguenas.html', {
+        'camiones': camiones,
+        'form_camion': CamionCiguenaForm(),
+    })

@@ -46,7 +46,8 @@ class CamionCiguena(models.Model):
     )
 
     def __str__(self):
-        return f"Cigueña: {self.patente} ({self.empresa_transporte})"
+        chofer = f" · Chofer: {self.nombre_chofer}" if self.nombre_chofer else ""
+        return f"{self.patente} · {self.empresa_transporte}{chofer}"
 
     @property
     def cupos_libres(self):

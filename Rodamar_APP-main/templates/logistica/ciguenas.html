@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Cigüeñas | Rodamar Logística{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-lg-5 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
+        <div>
+            <span class="text-muted small text-uppercase fw-bold">Transporte terrestre</span>
+            <h2 class="fw-bold text-dark mb-0"><i class="bi bi-truck-front text-primary me-2"></i>Cigüeñas</h2>
+            <p class="text-secondary mb-0">Camiones, choferes y la carga que lleva cada uno.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-rodamar" data-bs-toggle="modal" data-bs-target="#modalNuevaCiguena"><i class="bi bi-plus-lg me-1"></i> Nueva cigüeña</button>
+            <a href="{% url 'dashboard' %}" class="btn btn-light border"><i class="bi bi-arrow-left me-1"></i> Panel</a>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase text-muted">
+                    <tr><th class="ps-4">Patente</th><th>Empresa</th><th>Camión</th><th>Chofer</th><th>Documento</th><th>Carga</th><th class="text-end pe-4">Acciones</th></tr>
+                </thead>
+                <tbody>
+                {% for t in camiones %}
+                <tr>
+                    <td class="ps-4 fw-semibold font-monospace">{{ t.patente }}</td>
+                    <td>{{ t.empresa_transporte }}</td>
+                    <td>{{ t.modelo_camion|default:"—" }}{% if t.anio_camion %} ({{ t.anio_camion }}){% endif %}</td>
+                    <td class="fw-semibold">{{ t.nombre_chofer|default:"—" }}</td>
+                    <td>{{ t.rut_chofer|default:"—" }}</td>
+                    <td><span class="badge bg-primary-subtle text-primary border">{{ t.carga }} / {{ t.capacidad }}</span></td>
+                    <td class="text-end pe-4">
+                        <a href="{% url 'detalle_camion' t.pk %}" class="btn btn-sm btn-rodamar" title="Ver carga y asignar vehículos"><i class="bi bi-truck"></i> Carga</a>
+                        <a href="{% url 'editar_camion' t.pk %}" class="btn btn-sm btn-light border" title="Editar"><i class="bi bi-pencil"></i></a>
+                        <form method="post" action="{% url 'eliminar_camion' t.pk %}" class="d-inline"
+                              onsubmit="return confirm('¿Eliminar la cigüeña {{ t.patente }}? Sus vehículos quedarán sin cigüeña asignada.');">
+                            {% csrf_token %}
+                            <input type="hidden" name="volver" value="ciguenas">
+                            <button class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-5">Todavía no hay cigüeñas registradas.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNuevaCiguena" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-bottom p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-truck text-primary me-2"></i> Nueva cigüeña</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'registrar_camion' %}">
+                {% csrf_token %}
+                <input type="hidden" name="volver" value="ciguenas">
+                <div class="modal-body p-4 row g-3">
+                    {% for field in form_camion %}
+                    <div class="col-12">
+                        <label class="form-label small fw-bold text-muted text-uppercase">{{ field.label }}</label>
+                        {{ field }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="modal-footer border-top p-3">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-rodamar">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

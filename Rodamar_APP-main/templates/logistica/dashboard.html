@@ -26,6 +26,7 @@
             <button type="button" class="btn btn-rodamar-outline" data-bs-toggle="modal" data-bs-target="#modalNuevoCamion">
                 <i class="bi bi-truck me-1"></i> Asignar Cigüeña
             </button>
+            <a href="{% url 'ciguenas' %}" class="btn btn-light border"><i class="bi bi-truck-front me-1 text-primary"></i> Cigüeñas</a>
             <a href="{% url 'gestion' %}" class="btn btn-light border"><i class="bi bi-database-gear me-1 text-primary"></i> Clientes y catálogos</a>
             <a href="/api/" class="btn btn-light border" target="_blank">
                 <i class="bi bi-code-slash me-1 text-primary"></i> REST API
@@ -194,7 +195,7 @@
                                     <option value="">¿Cómo sale?</option>
                                     <option value="propio" {% if v.estado == 'EN_CAMINO' and not v.camion_ciguena %}selected{% endif %}>Por sus propios medios</option>
                                     {% for c in ciguenas %}
-                                        <option value="{{ c.pk }}" {% if v.camion_ciguena_id == c.pk %}selected{% endif %}>Cigüeña {{ c.patente }}</option>
+                                        <option value="{{ c.pk }}" {% if v.camion_ciguena_id == c.pk %}selected{% endif %}>Cigüeña {{ c.patente }} · {{ c.empresa_transporte }}{% if c.nombre_chofer %} · {{ c.nombre_chofer }}{% endif %}</option>>
                                     {% endfor %}
                                 </select>
                                 <button type="submit" class="btn btn-sm btn-primary" title="Actualizar Fase">
@@ -348,7 +349,7 @@ document.querySelectorAll('.select-estado').forEach(function (sel) {
             <div class="modal-body">
                 <select name="ciguena" id="ciguenaSelect" class="form-select">
                     <option value="">Sin cigüeña</option>
-                    {% for c in ciguenas %}<option value="{{ c.pk }}">{{ c.patente }} · {{ c.empresa_transporte }} (cupos libres: {{ c.cupos_libres }})</option>{% endfor %}
+                    {% for c in ciguenas %}<option value="{{ c.pk }}">{{ c.patente }} · {{ c.empresa_transporte }}{% if c.nombre_chofer %} · {{ c.nombre_chofer }}{% endif %} (cupos libres: {{ c.cupos_libres }})</option>{% endfor %}
                 </select>
             </div>
             <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar</button></div>
