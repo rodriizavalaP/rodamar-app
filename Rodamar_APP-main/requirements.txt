@@ -10,3 +10,4 @@ PyMySQL==1.1.1; sys_platform == "linux"
 cryptography>=42
 certifi
 whitenoise==6.9.0
+reportlab>=4.2

@@ -87,7 +87,7 @@ class Command(BaseCommand):
                             help="Deja los 60 camiones en estado 'No encontrado' (aún sin ubicar).")
 
     def handle(self, *args, **options):
-        estado = 'NO_ENCONTRADO' if options['no_encontrados'] else 'ENCONTRADO'
+        estado = 'NO_ENCONTRADO'
         cliente, _ = Cliente.objects.get_or_create(
             rut_o_id='NIGATAKE-BO',
             defaults={'nombre_completo': 'Import Export Nigatake S.R.L.'},

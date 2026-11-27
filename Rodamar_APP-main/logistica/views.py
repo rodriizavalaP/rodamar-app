@@ -1,4 +1,7 @@
+from datetime import datetime, time, timedelta
+
 from django.http import HttpResponse
+from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -29,6 +32,7 @@ def rastreo_vehiculo(request):
     vehiculos_empresa = None
     cliente_encontrado = None
     historial = None
+    fotos = None
     mensaje_error = None
 
     puede_ver_clientes = es_operador(request.user)
@@ -39,6 +43,7 @@ def rastreo_vehiculo(request):
 
         if vehiculo:
             historial = vehiculo.historial.all()
+            fotos = vehiculo.fotos.defer('imagen')
         elif puede_ver_clientes:
             # 2. Solo operadores: buscar por RUT o nombre de cliente / flota
             clientes = Cliente.objects.filter(
@@ -58,6 +63,7 @@ def rastreo_vehiculo(request):
     return render(request, 'logistica/rastreo.html', {
         'vehiculo': vehiculo,
         'historial': historial,
+        'fotos': fotos,
         'vehiculos_empresa': vehiculos_empresa,
         'cliente_encontrado': cliente_encontrado,
         'termino': query,
@@ -137,7 +143,7 @@ def _errores_de(form):
 def _volver(request, defecto):
     """Destino tras guardar. Solo se aceptan nombres de ruta conocidos."""
     destino = request.POST.get('volver', defecto)
-    return destino if destino in ('dashboard', 'gestion') else defecto
+    return destino if destino in ('dashboard', 'gestion', 'ciguenas') else defecto
 
 
 # Guardar nuevo buque desde el modal
@@ -357,7 +363,7 @@ def editar_cliente(request, pk):
 
 @solo_operadores
 def editar_camion(request, pk):
-    return _editar(request, CamionCiguena, CamionCiguenaForm, pk, 'Camión cigüeña', 'gestion')
+    return _editar(request, CamionCiguena, CamionCiguenaForm, pk, 'Camión cigüeña', 'ciguenas')
 
 
 @solo_operadores
@@ -575,6 +581,15 @@ def subir_foto(request, pk):
     return redirect('detalle_vehiculo', pk=vehiculo.pk)
 
 
+def ver_foto_publica(request, chasis, pk):
+    """Foto de chequeo visible para quien consulta el chasis exacto del vehículo."""
+    foto = get_object_or_404(FotoVehiculo, pk=pk, vehiculo__chasis__iexact=chasis)
+    respuesta = HttpResponse(bytes(foto.imagen), content_type=foto.content_type)
+    respuesta['Cache-Control'] = 'private, max-age=3600'
+    respuesta['X-Content-Type-Options'] = 'nosniff'
+    return respuesta
+
+
 @solo_operadores
 def ver_foto(request, pk):
     """Entrega la imagen guardada en la base de datos (solo para operadores)."""
@@ -675,3 +690,54 @@ def quitar_vehiculo_de_contenedor(request, pk, vehiculo_pk):
         vehiculo.save()
         messages.success(request, f"{vehiculo.chasis} ya no figura en el contenedor {contenedor.numero}.")
     return redirect('detalle_contenedor', pk=contenedor.pk)
+
+
+@solo_operadores
+def lista_ciguenas(request):
+    """Todas las cigüeñas (camiones) con su chofer y carga; desde aquí se editan o eliminan."""
+    camiones = CamionCiguena.objects.all().annotate(carga=Count('vehiculos_cargados')).order_by('patente')
+    return render(request, 'logistica/ciguenas.html', {
+        'camiones': camiones,
+        'form_camion': CamionCiguenaForm(),
+    })
+
+
+def reporte_diario(request):
+    """PDF con todo lo trabajado en un día (por defecto, hoy), ordenado por hora."""
+    from .reportes import generar_reporte_pdf
+
+    texto = request.GET.get('fecha', '').strip()
+    try:
+        fecha = datetime.strptime(texto, '%Y-%m-%d').date() if texto else timezone.localdate()
+    except ValueError:
+        messages.error(request, "La fecha del reporte no es válida.")
+        return redirect('dashboard')
+
+    zona = timezone.get_current_timezone()
+    inicio = timezone.make_aware(datetime.combine(fecha, time.min), zona)
+    fin = inicio + timedelta(days=1)
+
+    def hora(dt):
+        return timezone.localtime(dt).strftime('%H:%M')
+
+    movimientos = [{
+        'hora': hora(h.fecha), 'chasis': h.vehiculo.chasis,
+        'vehiculo': f"{h.vehiculo.marca} {h.vehiculo.modelo}",
+        'cliente': h.vehiculo.cliente.nombre_completo,
+        'anterior': h.estado_anterior, 'nuevo': h.estado_nuevo,
+        'ubicacion': h.ubicacion_patio or '',
+        'ciguena': h.camion_ciguena.patente if h.camion_ciguena else '',
+        'nota': h.nota or '', 'usuario': h.usuario.username if h.usuario else '',
+    } for h in HistorialEstado.objects.filter(fecha__gte=inicio, fecha__lt=fin)
+        .select_related('vehiculo', 'vehiculo__cliente', 'camion_ciguena', 'usuario').order_by('fecha', 'pk')]
+
+    fotos = [{
+        'hora': hora(f.fecha), 'chasis': f.vehiculo.chasis, 'tipo': f.get_tipo_display(),
+        'descripcion': f.descripcion, 'usuario': f.usuario.username if f.usuario else '',
+    } for f in FotoVehiculo.objects.filter(fecha__gte=inicio, fecha__lt=fin)
+        .defer('imagen').select_related('vehiculo', 'usuario').order_by('fecha', 'pk')]
+
+    pdf = generar_reporte_pdf(fecha, movimientos, fotos, request.user.get_username(), timezone.localtime())
+    respuesta = HttpResponse(pdf, content_type='application/pdf')
+    respuesta['Content-Disposition'] = f'attachment; filename="reporte-rodamar-{fecha:%Y-%m-%d}.pdf"'
+    return respuesta
