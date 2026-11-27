@@ -1,4 +1,7 @@
+from datetime import datetime, time, timedelta
+
 from django.http import HttpResponse
+from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -675,3 +678,45 @@ def quitar_vehiculo_de_contenedor(request, pk, vehiculo_pk):
         vehiculo.save()
         messages.success(request, f"{vehiculo.chasis} ya no figura en el contenedor {contenedor.numero}.")
     return redirect('detalle_contenedor', pk=contenedor.pk)
+
+
+@solo_operadores
+def reporte_diario(request):
+    """PDF con todo lo trabajado en un día (por defecto, hoy), ordenado por hora."""
+    from .reportes import generar_reporte_pdf
+
+    texto = request.GET.get('fecha', '').strip()
+    try:
+        fecha = datetime.strptime(texto, '%Y-%m-%d').date() if texto else timezone.localdate()
+    except ValueError:
+        messages.error(request, "La fecha del reporte no es válida.")
+        return redirect('dashboard')
+
+    zona = timezone.get_current_timezone()
+    inicio = timezone.make_aware(datetime.combine(fecha, time.min), zona)
+    fin = inicio + timedelta(days=1)
+
+    def hora(dt):
+        return timezone.localtime(dt).strftime('%H:%M')
+
+    movimientos = [{
+        'hora': hora(h.fecha), 'chasis': h.vehiculo.chasis,
+        'vehiculo': f"{h.vehiculo.marca} {h.vehiculo.modelo}",
+        'cliente': h.vehiculo.cliente.nombre_completo,
+        'anterior': h.estado_anterior, 'nuevo': h.estado_nuevo,
+        'ubicacion': h.ubicacion_patio or '',
+        'ciguena': h.camion_ciguena.patente if h.camion_ciguena else '',
+        'nota': h.nota or '', 'usuario': h.usuario.username if h.usuario else '',
+    } for h in HistorialEstado.objects.filter(fecha__gte=inicio, fecha__lt=fin)
+        .select_related('vehiculo', 'vehiculo__cliente', 'camion_ciguena', 'usuario').order_by('fecha', 'pk')]
+
+    fotos = [{
+        'hora': hora(f.fecha), 'chasis': f.vehiculo.chasis, 'tipo': f.get_tipo_display(),
+        'descripcion': f.descripcion, 'usuario': f.usuario.username if f.usuario else '',
+    } for f in FotoVehiculo.objects.filter(fecha__gte=inicio, fecha__lt=fin)
+        .defer('imagen').select_related('vehiculo', 'usuario').order_by('fecha', 'pk')]
+
+    pdf = generar_reporte_pdf(fecha, movimientos, fotos, request.user.get_username(), timezone.localtime())
+    respuesta = HttpResponse(pdf, content_type='application/pdf')
+    respuesta['Content-Disposition'] = f'attachment; filename="reporte-rodamar-{fecha:%Y-%m-%d}.pdf"'
+    return respuesta
