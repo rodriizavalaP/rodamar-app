@@ -28,6 +28,10 @@
             </button>
             <a href="{% url 'ciguenas' %}" class="btn btn-light border"><i class="bi bi-truck-front me-1 text-primary"></i> Cigüeñas</a>
             <a href="{% url 'gestion' %}" class="btn btn-light border"><i class="bi bi-database-gear me-1 text-primary"></i> Clientes y catálogos</a>
+            <form method="get" action="{% url 'reporte_diario' %}" class="d-flex gap-1">
+                <input type="date" name="fecha" class="form-control" style="width: 160px;" title="Día del reporte" required>
+                <button type="submit" class="btn btn-light border" title="Descargar el PDF del día"><i class="bi bi-file-earmark-pdf me-1 text-danger"></i> Reporte PDF</button>
+            </form>
             <a href="/api/" class="btn btn-light border" target="_blank">
                 <i class="bi bi-code-slash me-1 text-primary"></i> REST API
             </a>
@@ -364,5 +368,11 @@ document.querySelectorAll('.btn-ciguena').forEach(function (b) {
         document.getElementById('ciguenaSelect').value = b.dataset.actual || '';
     });
 });
+</script>
+<script>
+(function () {
+    var f = document.querySelector('input[name="fecha"]');
+    if (f) { var d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); f.value = d.toISOString().slice(0, 10); }
+})();
 </script>
 {% endblock %}
