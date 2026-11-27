@@ -110,6 +110,7 @@ def dashboard_operaciones(request):
         'q': q,
         'filtro_estado': filtro_estado,
         'estados': Vehiculo.ESTADOS,
+        'ciguenas': CamionCiguena.objects.all(),
         'buques': Buque.objects.all().order_by('-fecha_atraque'),
         'clientes': Cliente.objects.all().order_by('nombre_completo'),
         'camiones': CamionCiguena.objects.all().order_by('patente'),
@@ -210,17 +211,40 @@ def actualizar_estado_vehiculo(request, pk):
         if nueva_ubicacion is not None:
             vehiculo.ubicacion_patio = nueva_ubicacion.strip()
 
+        # En traslado: sale por sus propios medios o cargado en una cigüeña
+        traslado = request.POST.get('traslado', '')
+        camion_historial = vehiculo.camion_ciguena
+        nota = ''
+        if nuevo_estado == 'EN_CAMINO' and traslado:
+            if traslado == 'propio':
+                vehiculo.camion_ciguena = None
+                camion_historial = None
+                nota = 'Sale por sus propios medios'
+            elif traslado.isdigit():
+                camion = CamionCiguena.objects.filter(pk=int(traslado)).first()
+                if camion is None:
+                    messages.error(request, "La cigüeña elegida no existe.")
+                    return redirect('dashboard')
+                if vehiculo.camion_ciguena_id != camion.pk and camion.cupos_libres < 1:
+                    messages.error(request, f"La cigüeña {camion.patente} no tiene cupos libres.")
+                    return redirect('dashboard')
+                vehiculo.camion_ciguena = camion
+                camion_historial = camion
+                nota = f'Cargado en la cigüeña {camion.patente}'
+
         cambio_estado = vehiculo.estado != estado_anterior
         cambio_ubicacion = (vehiculo.ubicacion_patio or '') != ubicacion_anterior
         vehiculo.save()
 
-        if cambio_estado or cambio_ubicacion:
+        if cambio_estado or cambio_ubicacion or nota:
             HistorialEstado.objects.create(
                 vehiculo=vehiculo,
                 estado_anterior=estado_anterior,
                 estado_nuevo=vehiculo.estado,
                 ubicacion_patio=vehiculo.ubicacion_patio,
                 usuario=request.user,
+                camion_ciguena=camion_historial,
+                nota=nota,
             )
         messages.success(request, f"Actualizado chasis {vehiculo.chasis}.")
     return redirect('dashboard')
