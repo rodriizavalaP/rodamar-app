@@ -91,6 +91,7 @@ def dashboard_operaciones(request):
 
     # Contadores de métricas
     total = Vehiculo.objects.count()
+    no_encontrados = Vehiculo.objects.filter(estado='NO_ENCONTRADO').count()
     encontrados = Vehiculo.objects.filter(estado='ENCONTRADO').count()
     en_proceso = Vehiculo.objects.filter(estado='EN_PROCESO').count()
     en_camino = Vehiculo.objects.filter(estado='EN_CAMINO').count()
@@ -103,6 +104,7 @@ def dashboard_operaciones(request):
         'form_cliente': ClienteForm(),
         'form_camion': CamionCiguenaForm(),
         'total': total,
+        'no_encontrados': no_encontrados,
         'encontrados': encontrados,
         'en_proceso': en_proceso,
         'en_camino': en_camino,
@@ -444,6 +446,44 @@ def asignar_vehiculos(request, pk):
                 f"{len(vehiculos)} vehículo(s) asignado(s) a la cigüeña {camion.patente}."
             )
     return redirect('detalle_camion', pk=camion.pk)
+
+
+@solo_operadores
+def asignar_ciguena_vehiculo(request, pk):
+    """Asigna (o quita) la cigüeña de un solo vehículo desde el panel."""
+    vehiculo = get_object_or_404(Vehiculo, pk=pk)
+    if request.method == 'POST':
+        eleccion = request.POST.get('ciguena', '')
+        anterior = vehiculo.camion_ciguena
+        if eleccion == '':
+            if anterior is None:
+                return redirect('dashboard')
+            vehiculo.camion_ciguena = None
+            vehiculo.save()
+            HistorialEstado.objects.create(
+                vehiculo=vehiculo, estado_anterior=vehiculo.estado, estado_nuevo=vehiculo.estado,
+                ubicacion_patio=vehiculo.ubicacion_patio, usuario=request.user,
+                nota=f"Retirado de la cigüeña {anterior.patente}",
+            )
+            messages.success(request, f"{vehiculo.chasis} ya no va en cigüeña.")
+        else:
+            camion = get_object_or_404(CamionCiguena, pk=eleccion)
+            if anterior_id_distinto(vehiculo, camion) and camion.cupos_libres < 1:
+                messages.error(request, f"La cigüeña {camion.patente} no tiene cupos libres.")
+            else:
+                vehiculo.camion_ciguena = camion
+                vehiculo.save()
+                HistorialEstado.objects.create(
+                    vehiculo=vehiculo, estado_anterior=vehiculo.estado, estado_nuevo=vehiculo.estado,
+                    ubicacion_patio=vehiculo.ubicacion_patio, usuario=request.user,
+                    camion_ciguena=camion, nota=f"Asignado a la cigüeña {camion.patente}",
+                )
+                messages.success(request, f"{vehiculo.chasis} asignado a la cigüeña {camion.patente}.")
+    return redirect('dashboard')
+
+
+def anterior_id_distinto(vehiculo, camion):
+    return vehiculo.camion_ciguena_id != camion.pk
 
 
 @solo_operadores

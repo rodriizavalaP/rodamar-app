@@ -269,6 +269,25 @@ class CiguenaYFotosTest(TestCase):
         self.assertIsNone(self.v1.camion_ciguena)
         self.assertTrue(self.v1.historial.filter(nota='Sale por sus propios medios').exists())
 
+    def test_ciguena_rapida_desde_el_panel(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        url = reverse('asignar_ciguena_vehiculo', args=[self.v1.pk])
+        self.client.post(url, {'ciguena': str(self.camion.pk)})
+        self.v1.refresh_from_db()
+        self.assertEqual(self.v1.camion_ciguena, self.camion)
+        self.client.post(url, {'ciguena': ''})
+        self.v1.refresh_from_db()
+        self.assertIsNone(self.v1.camion_ciguena)
+
+    def test_estado_no_encontrado_y_flujo(self):
+        self.client.login(username='op_fotos', password='clave12345')
+        url = reverse('actualizar_estado', args=[self.v1.pk])
+        for estado in ('NO_ENCONTRADO', 'ENCONTRADO', 'EN_PROCESO'):
+            self.client.post(url, {'nuevo_estado': estado})
+            self.v1.refresh_from_db()
+            self.assertEqual(self.v1.estado, estado)
+        self.assertTrue(self.v1.historial.filter(estado_nuevo='NO_ENCONTRADO').exists())
+
     def test_no_se_puede_superar_la_capacidad(self):
         self.client.login(username='op_fotos', password='clave12345')
         v3 = Vehiculo.objects.create(

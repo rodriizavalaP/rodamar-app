@@ -57,6 +57,7 @@
                         <span class="text-uppercase text-muted fw-bold small">Fase 1: Muelle / Descarga</span>
                         <h2 class="fw-extrabold my-1 text-warning">{{ encontrados }}</h2>
                         <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Pendiente traslado</span>
+                        {% if no_encontrados %}<span class="badge bg-danger-subtle text-danger border border-danger-subtle">{{ no_encontrados }} sin encontrar</span>{% endif %}
                     </div>
                     <div class="bg-warning-subtle text-warning p-3 rounded-4 fs-3">
                         <i class="bi bi-box-arrow-in-down"></i>
@@ -151,6 +152,7 @@
                         <td>
                             <div class="fw-semibold text-dark">{{ v.marca }} {{ v.modelo }}</div>
                             <small class="text-muted">{{ v.color|default:"Sin color reg." }}</small>
+                            {% if v.camion_ciguena %}<div><span class="badge bg-primary-subtle text-primary border"><i class="bi bi-truck me-1"></i>{{ v.camion_ciguena.patente }}</span></div>{% endif %}
                             {% if v.contenedor %}<div><span class="badge bg-secondary-subtle text-secondary border"><i class="bi bi-box-seam me-1"></i>{{ v.contenedor.numero }}</span></div>{% endif %}
                         </td>
                         <td>
@@ -171,7 +173,8 @@
                         </td>
                         <td>
                             <span class="badge rounded-pill px-3 py-2 
-                                {% if v.estado == 'ENTREGADO' %}bg-success-subtle text-success border border-success-subtle
+                                {% if v.estado == 'NO_ENCONTRADO' %}bg-danger-subtle text-danger border border-danger-subtle
+                                {% elif v.estado == 'ENTREGADO' %}bg-success-subtle text-success border border-success-subtle
                                 {% elif v.estado == 'EN_CAMINO' %}bg-primary-subtle text-primary border border-primary-subtle
                                 {% elif v.estado == 'EN_PROCESO' %}bg-info-subtle text-info border border-info-subtle
                                 {% else %}bg-warning-subtle text-warning border border-warning-subtle{% endif %}">
@@ -182,9 +185,9 @@
                         <td>
                             <form method="post" action="{% url 'actualizar_estado' v.pk %}" class="d-flex gap-1 flex-wrap">
                                 {% csrf_token %}
-                                <select name="nuevo_estado" class="form-select form-select-sm bg-light select-estado" style="width: 140px;">
+                                <select name="nuevo_estado" class="form-select form-select-sm bg-light select-estado" style="width: 210px;">
                                     {% for clave, etiqueta in estados %}
-                                        <option value="{{ clave }}" {% if v.estado == clave %}selected{% endif %}>{{ clave }}</option>
+                                        <option value="{{ clave }}" {% if v.estado == clave %}selected{% endif %}>{{ etiqueta }}</option>
                                     {% endfor %}
                                 </select>
                                 <select name="traslado" class="form-select form-select-sm bg-light select-traslado" style="width: 170px; {% if v.estado != 'EN_CAMINO' %}display:none;{% endif %}">
@@ -203,6 +206,9 @@
                         <td class="text-end pe-4">
                             <div class="btn-group">
                                 {% if es_operador %}
+                                <button type="button" class="btn btn-sm btn-light border btn-ciguena" title="Asignar cigüeña"
+                                        data-bs-toggle="modal" data-bs-target="#modalCiguena"
+                                        data-action="{% url 'asignar_ciguena_vehiculo' v.pk %}" data-chasis="{{ v.chasis }}" data-actual="{{ v.camion_ciguena_id|default:'' }}"><i class="bi bi-truck"></i></button>
                                 <a href="{% url 'detalle_vehiculo' v.pk %}" class="btn btn-sm btn-light border" title="Fotos y chequeo"><i class="bi bi-camera"></i></a>
                                 {% endif %}
                                 <a href="{% url 'rastreo' %}?codigo={{ v.chasis }}" class="btn btn-sm btn-light border" title="Ver Hoja de Ruta">
@@ -330,6 +336,31 @@ document.querySelectorAll('.select-estado').forEach(function (sel) {
     sel.addEventListener('change', function () {
         var t = sel.form.querySelector('.select-traslado');
         t.style.display = sel.value === 'EN_CAMINO' ? '' : 'none';
+    });
+});
+</script>
+<div class="modal fade" id="modalCiguena" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" id="formCiguena" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header"><h6 class="modal-title"><i class="bi bi-truck me-2"></i>Cigüeña para <span id="ciguenaChasis" class="font-monospace"></span></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+            <div class="modal-body">
+                <select name="ciguena" id="ciguenaSelect" class="form-select">
+                    <option value="">Sin cigüeña</option>
+                    {% for c in ciguenas %}<option value="{{ c.pk }}">{{ c.patente }} · {{ c.empresa_transporte }} (cupos libres: {{ c.cupos_libres }})</option>{% endfor %}
+                </select>
+            </div>
+            <div class="modal-footer"><button type="submit" class="btn btn-primary">Guardar</button></div>
+        </form>
+    </div>
+</div>
+<script>
+document.querySelectorAll('.btn-ciguena').forEach(function (b) {
+    b.addEventListener('click', function () {
+        document.getElementById('formCiguena').action = b.dataset.action;
+        document.getElementById('ciguenaChasis').textContent = b.dataset.chasis;
+        document.getElementById('ciguenaSelect').value = b.dataset.actual || '';
     });
 });
 </script>

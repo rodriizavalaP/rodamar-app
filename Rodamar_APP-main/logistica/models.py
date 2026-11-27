@@ -53,6 +53,7 @@ class CamionCiguena(models.Model):
 # Tabla 4: Vehículos que se descargan en el puerto
 class Vehiculo(models.Model):
     ESTADOS = [
+        ('NO_ENCONTRADO', '0. No encontrado (aún sin ubicar)'),
         ('ENCONTRADO', '1. Descarga / Encontrado'),
         ('EN_PROCESO', '2. Inspección / En Proceso'),
         ('EN_CAMINO', '3. En Traslado / Faena'),

@@ -82,7 +82,12 @@ OBSERVACION = "BL 6509749280 · MOLLY SCHULTE 150S · 40' HDRY · COSCO"
 class Command(BaseCommand):
     help = "Carga cliente Nigatake, nave, 20 contenedores y 60 camiones del BL 6509749280."
 
+    def add_arguments(self, parser):
+        parser.add_argument('--no-encontrados', action='store_true',
+                            help="Deja los 60 camiones en estado 'No encontrado' (aún sin ubicar).")
+
     def handle(self, *args, **options):
+        estado = 'NO_ENCONTRADO' if options['no_encontrados'] else 'ENCONTRADO'
         cliente, _ = Cliente.objects.get_or_create(
             rut_o_id='NIGATAKE-BO',
             defaults={'nombre_completo': 'Import Export Nigatake S.R.L.'},
@@ -102,10 +107,12 @@ class Command(BaseCommand):
                 defaults={
                     'marca': 'KAMA', 'modelo': 'KMC1042P3 (camión liviano)', 'color': color,
                     'buque': buque, 'cliente': cliente, 'contenedor': contenedor,
-                    'estado': 'ENCONTRADO',
+                    'estado': estado,
                 },
             )
             nuevos += creado
+            if options['no_encontrados'] and not creado:
+                Vehiculo.objects.filter(chasis=chasis, estado='ENCONTRADO', historial__isnull=True).update(estado='NO_ENCONTRADO')
         self.stdout.write(self.style.SUCCESS(
             f"Camiones nuevos: {nuevos} de {len(CARGA)}. Contenedores: {Contenedor.objects.count()}."
         ))
